@@ -12,6 +12,7 @@ class MediaRouteApplicationConnector;
 class StreamInfo;
 class MediaPacket;
 class MediaRouteStream;
+class MediaTimestamp;
 
 class RelayClient;
 
@@ -29,6 +30,11 @@ public:
 	}
 
 	virtual bool OnReceiveBuffer(std::shared_ptr<MediaRouteApplicationConnector> application, std::shared_ptr<StreamInfo> stream, std::unique_ptr<MediaPacket> packet)
+	{
+		return false;
+	}
+
+	virtual bool OnReceiveOriginTimestamp(std::shared_ptr<MediaRouteApplicationConnector> application, std::shared_ptr<StreamInfo> stream, const MediaTimestamp &stream_timestamp, const MediaTimestamp &origin_timestamp)
 	{
 		return false;
 	}

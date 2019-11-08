@@ -967,7 +967,7 @@ bool AmfObjectArray::AddNullProperty(const char *name)
 //====================================================================================================
 // AmfObjectArray - _GetPair
 //====================================================================================================
-AmfObject::tPROPERTY_PAIR *AmfObjectArray::_GetPair(int index)
+AmfObject::tPROPERTY_PAIR *AmfObjectArray::_GetPair(int index) const
 {
     // 범위 체크
     if (index < 0) { return nullptr; }
@@ -1015,7 +1015,7 @@ char *AmfObjectArray::GetName(int index)
 //====================================================================================================
 // AmfObjectArray - GetType
 //====================================================================================================
-AmfDataType AmfObjectArray::GetType(int index)
+AmfDataType AmfObjectArray::GetType(int index) const
 {
     tPROPERTY_PAIR *property_pair = nullptr;
 
@@ -1057,7 +1057,7 @@ bool AmfObjectArray::GetBoolean(int index)
 //====================================================================================================
 // AmfObjectArray - GetString
 //====================================================================================================
-char *AmfObjectArray::GetString(int index)
+char *AmfObjectArray::GetString(int index) const
 {
     tPROPERTY_PAIR *property_pair = nullptr;
 

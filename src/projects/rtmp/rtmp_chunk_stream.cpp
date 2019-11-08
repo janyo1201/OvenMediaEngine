@@ -7,6 +7,9 @@
 //
 //==============================================================================
 #include <string>
+#include <iomanip>
+#include <sstream>
+#include <cinttypes>
 #include "rtmp_chunk_stream.h"
 #include "../media_router/bitstream/bitstream_to_annexb.h"
 #include "../media_router/bitstream/bitstream_to_adts.h"
@@ -595,6 +598,79 @@ void RtmpChunkStream::ReceiveAmfDataMessage(std::shared_ptr<ImportMessage> &mess
 	    document.GetProperty(2)->GetType() == AmfDataType::Array))
 	{
 		OnAmfMetaData(message->message_header, document, 2);
+	}
+	else if (message_name == RTMP_CMD_DATA_ONFI &&
+	   document.GetProperty(1)->GetType() == AmfDataType::Array)
+	{
+		const auto *objet_array = (AmfObjectArray *)(document.GetProperty(1)->GetArray());
+		if (objet_array->GetType(0) ==  AmfDataType::String &&
+			objet_array->GetType(1) ==  AmfDataType::String)
+		{
+			const auto *sd_array_item = objet_array->GetString(0), *st_array_item = objet_array->GetString(1);
+			if (sd_array_item != nullptr && st_array_item != nullptr) 
+			{
+				logtw("%s: %s %s", RTMP_CMD_DATA_ONFI, sd_array_item, st_array_item);		
+				std::tm timestamp {};
+				uint32_t milliseconds = 0;
+				if (sscanf(sd_array_item, "%d-%d-%d", &timestamp.tm_mday, &timestamp.tm_mon, &timestamp.tm_year) != 3)
+				{
+					logtw("Maformed sd field");
+				}
+				if (sscanf(st_array_item, "%d:%d:%d.%u", &timestamp.tm_hour, &timestamp.tm_min, &timestamp.tm_sec, &milliseconds) != 4)
+				{
+					logtw("Malformed sd field");
+				}
+				RtmpFiData rtmp_fi_data(message->message_header->timestamp, static_cast<uint64_t>(std::mktime(&timestamp)) * 1000 + static_cast<uint64_t>(milliseconds));
+				logtw("Got onFI data with timestamp %" PRIu64 " with rtmp timestamp %" PRIu64, rtmp_fi_data.GetFiData(), rtmp_fi_data.GetRtmpTimestamp());
+				if (_last_rtmp_fi_data.IsValid())
+				{
+					if (_last_rtmp_fi_data.GetRtmpTimestamp() < rtmp_fi_data.GetRtmpTimestamp() &&
+						_last_rtmp_fi_data.GetFiData() < rtmp_fi_data.GetFiData()) 
+					{
+						logti("OnFI timestamp difference: %" PRIu64 " (%" PRIu64 " - %" PRIu64 ")"
+							", rtmp timestamp difference: %" PRIu64 " (%" PRIu64 " - %" PRIu64 ")"
+							", last video rtmp timestamp: %u"
+							", last audio rtmp timestamp: %u",
+							rtmp_fi_data.GetFiData() - _last_rtmp_fi_data.GetFiData(), rtmp_fi_data.GetFiData(), _last_rtmp_fi_data.GetFiData(),
+							rtmp_fi_data.GetRtmpTimestamp() - _last_rtmp_fi_data.GetRtmpTimestamp(), rtmp_fi_data.GetRtmpTimestamp(), _last_rtmp_fi_data.GetRtmpTimestamp(),
+							_last_video_timestamp,
+							_last_audio_timestamp);
+					}
+					else
+					{
+						logtw("Inconsistent onFI timestamps, current onFI timestamp %" PRIu64 " with rtmp timestamp %" PRIu64 
+							", last onFI timestamp %" PRIu64 " with rtmp timestamp %" PRIu64,
+							rtmp_fi_data.GetFiData(), rtmp_fi_data.GetRtmpTimestamp(),
+							_last_rtmp_fi_data.GetFiData(), _last_rtmp_fi_data.GetRtmpTimestamp());
+					}
+				}
+				else
+				{
+					logti("First onFI timestamp received");
+				}
+				_last_rtmp_fi_data = rtmp_fi_data;
+				_stream_interface->OnOriginTimestamp(_remote,
+		                                          _app_id,
+		                                          _stream_id,
+		                                          MediaTimestamp(message->message_header->timestamp, 1000),
+		                                          MediaTimestamp(rtmp_fi_data.GetFiData(), 1000));
+			}
+			else
+			{
+				if (sd_array_item == nullptr)
+				{
+					logtw("Missing sd field");
+				}
+				if (st_array_item == nullptr)
+				{
+					logtw("Missing st field");
+				}
+			}
+		}
+		else
+		{
+			logtw("Unknown %s message format", RTMP_CMD_DATA_ONFI);
+		}
 	}
 	else
 	{

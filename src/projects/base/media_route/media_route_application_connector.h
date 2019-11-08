@@ -12,6 +12,7 @@
 #include "media_route_interface.h"
 #include "media_route_application_interface.h"
 #include "media_buffer.h"
+#include "media_timestamp.h"
 
 class MediaRouteApplicationConnector : public ov::EnableSharedFromThis<MediaRouteApplicationConnector>
 {
@@ -55,6 +56,17 @@ public:
 		}
 
 		return GetMediaRouteApplication()->OnReceiveBuffer(this->GetSharedPtr(), std::move(stream_info), std::move(packet));
+	}
+
+	inline bool SendOriginTimestamp(std::shared_ptr<StreamInfo> stream_info, const MediaTimestamp &stream_timestamp, const MediaTimestamp &origin_timestamp)
+	{
+		if(GetMediaRouteApplication() == nullptr)
+		{
+			OV_ASSERT(false, "MediaRouteAppplication MUST BE NOT NULL");
+			return false;
+		}
+
+		return GetMediaRouteApplication()->OnReceiveOriginTimestamp(this->GetSharedPtr(), std::move(stream_info), stream_timestamp, origin_timestamp);
 	}
 
 	virtual ConnectorType GetConnectorType()

@@ -311,6 +311,27 @@ bool RtmpServer::OnChunkStreamVideoData(ov::ClientSocket *remote,
     return true;
 }
 
+bool RtmpServer::OnOriginTimestamp(ov::ClientSocket *remote,
+                                   info::application_id_t application_id,
+                                   uint32_t stream_id,
+                                   const MediaTimestamp& stream_timestamp,
+                                   const MediaTimestamp& origin_timestamp)
+{
+    for(auto &observer : _observers)
+    {
+        if(!observer->OnOriginTimestamp(application_id, stream_id, stream_timestamp, origin_timestamp))
+        {
+            logte("Rtmp input stream origin timestamp data fail - id(%u/%u) remote(%s)",
+                  application_id,
+                  stream_id,
+                  remote->ToString().CStr());
+            return false;
+        }
+    }
+
+    return true;   
+}
+
 //====================================================================================================
 // OnChunkStreamAudioData
 // - IRtmpChunkStream 구현

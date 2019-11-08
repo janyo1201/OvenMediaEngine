@@ -31,8 +31,12 @@ public:
 
 	void ShowInfo();
 
+	uint32_t GetOriginId() const;
+	void SetOriginId(uint32_t id);
+
 protected:
 	uint32_t _id;
+	uint32_t _origin_id;
 	ov::String _name;
 
 	// MediaTrack ID 값을 Key로 활용함

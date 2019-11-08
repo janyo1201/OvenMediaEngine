@@ -78,6 +78,12 @@ protected:
                         info::application_id_t application_id,
                         uint32_t stream_id) override;
 
+    virtual bool OnOriginTimestamp(ov::ClientSocket *remote,
+                                   info::application_id_t application_id,
+                                   uint32_t stream_id,
+                                   const MediaTimestamp& stream_timestamp,
+                                   const MediaTimestamp& origin_timestamp) override;
+
     void OnGarbageCheck();
 
 private :

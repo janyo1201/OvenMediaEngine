@@ -17,11 +17,13 @@
 #include <base/ovsocket/ovsocket.h>
 #include <base/application/application.h>
 #include <config/config.h>
+#include <base/media_route/media_timestamp.h>
 
 #include "chunk/rtmp_import_chunk.h"
 #include "chunk/rtmp_export_chunk.h"
 #include "chunk/rtmp_handshake.h"
 #include "chunk/amf_document.h"
+#include "rtmp_fi_data.h"
 
 //====================================================================================================
 // Interface
@@ -32,18 +34,18 @@ public:
 	virtual bool OnChunkStreamReadyComplete(ov::ClientSocket *remote,
 	                                        ov::String &app_name, ov::String &stream_name,
 	                                        std::shared_ptr<RtmpMediaInfo> &media_info,
-	                                        info::application_id_t &applicaiton_id,
+	                                        info::application_id_t &application_id,
 	                                        uint32_t &stream_id) = 0;
 
 	virtual bool OnChunkStreamVideoData(ov::ClientSocket *remote,
-	                                    info::application_id_t applicaiton_id,
+	                                    info::application_id_t application_id,
 	                                    uint32_t stream_id,
 	                                    uint32_t timestamp,
 	                                    RtmpFrameType frame_type,
 	                                    std::shared_ptr<std::vector<uint8_t>> &data) = 0;
 
 	virtual bool OnChunkStreamAudioData(ov::ClientSocket *remote,
-	                                    info::application_id_t applicaiton_id,
+	                                    info::application_id_t application_id,
 	                                    uint32_t stream_id,
 	                                    uint32_t timestamp,
 	                                    RtmpFrameType frame_type,
@@ -52,8 +54,15 @@ public:
 	virtual bool OnDeleteStream(ov::ClientSocket *remote,
 	                            ov::String &app_name,
 	                            ov::String &stream_name,
-	                            info::application_id_t applicaiton_id,
+	                            info::application_id_t application_id,
 	                            uint32_t stream_id) = 0;
+
+	virtual bool OnOriginTimestamp(ov::ClientSocket *remote,
+	                               info::application_id_t application_id,
+	                               uint32_t stream_id,
+	                               const MediaTimestamp &stream_timestamp,
+	                               const MediaTimestamp &origin_timestamp) = 0;
+
 };
 
 //====================================================================================================
@@ -224,5 +233,7 @@ protected :
 
 
 	time_t _last_packet_time;
+
+	RtmpFiData _last_rtmp_fi_data;
 
 };

@@ -339,7 +339,7 @@ bool MediaRouteApplication::OnReceiveBuffer(
 	auto stream_bucket = _streams.find(stream_info->GetId());
 	if(stream_bucket == _streams.end())
 	{
-		logte("cannot find stream from router. appication(%s), stream(%s)", _application_info->GetName().CStr(), stream_info->GetName().CStr());
+		logte("cannot find stream from router. application(%s), stream(%s)", _application_info->GetName().CStr(), stream_info->GetName().CStr());
 
 		return false;
 	}
@@ -366,6 +366,24 @@ bool MediaRouteApplication::OnReceiveBuffer(
 	return ret;
 }
 
+bool MediaRouteApplication::OnReceiveOriginTimestamp(
+	std::shared_ptr<MediaRouteApplicationConnector> app_conn,
+	std::shared_ptr<StreamInfo> stream_info,
+	const MediaTimestamp &stream_timestamp,
+	const MediaTimestamp &origin_timestamp)
+{
+	if(app_conn == nullptr || stream_info == nullptr)
+	{
+		return false;
+	}
+
+	std::lock_guard<std::mutex> lock(_stream_origin_timestamp_mutex);
+	_stream_origin_timestamps[stream_info->GetId()] = std::make_pair(stream_timestamp, origin_timestamp);
+	logti("Added origin timestamp for stream %u - (%" PRId64 ",%u) / (%" PRId64 ", %u)",
+	      stream_info->GetId(), stream_timestamp.GetValue(), stream_timestamp.GetFrequency(),
+	      origin_timestamp.GetValue(), origin_timestamp.GetFrequency());
+	return true;
+}
 
 void MediaRouteApplication::OnGarbageCollector()
 {
@@ -531,8 +549,48 @@ void MediaRouteApplication::MainTask()
 							encoded_frame->_encoded_height = track->GetHeight();
 							encoded_frame->_frame_type = (cur_buf->GetFlags() == MediaPacketFlag::Key) ? FrameType::VideoFrameKey : FrameType::VideoFrameDelta;
 
+							std::pair<MediaTimestamp, MediaTimestamp> stream_origin_timestamp;
+							{
+								std::lock_guard<std::mutex> lock(_stream_origin_timestamp_mutex);
+								auto it =  _stream_origin_timestamps.find(stream_info->GetOriginId());
+								if (it != _stream_origin_timestamps.end())
+								{
+									stream_origin_timestamp = it->second;
+								}
+								else
+								{
+									// logti("No stream origin timestamp for stream %u with orgin %d", stream_info->GetId(), stream_info->GetOriginId());
+								}
+							}
+
+							auto pts = cur_buf->GetPts();
+							if (stream_origin_timestamp.first.IsValid() && stream_origin_timestamp.second.IsValid())
+							{
+								const auto media_track_timebase = media_track->GetTimeBase();
+								if (media_track_timebase.GetDen() == stream_origin_timestamp.first.GetFrequency() && media_track_timebase.GetNum() == 1)
+								{
+									auto offset = stream_origin_timestamp.first.GetValue() - media_track->GetStartFrameTime();
+
+									int64_t adjusted_pts = pts < offset ? stream_origin_timestamp.second.GetValue() * 1000 - (offset * 1000 - pts) : stream_origin_timestamp.second.GetValue() * 1000 + (pts - offset * 1000);
+									// TODO: remove spam
+									logti("Adjusted pts %" PRId64 " to %" PRId64 " based on RTMP stream origin timestamp %" PRIu64 " at RTMP timestamp %" PRIu64,
+										  pts, adjusted_pts, stream_origin_timestamp.second.GetValue(), stream_origin_timestamp.first.GetValue());
+									pts = adjusted_pts;
+								}
+								else
+								{
+									// TODO: remove spam
+									//logtw("Timebase mismatch - stream origin has %u, media track has %u/%u", stream_origin_timestamp.first.GetFrequency(), media_track_timebase.GetNum(), media_track_timebase.GetDen());
+								}
+							}
+							else
+							{
+								// TODO: remove spam
+								//logti("Stream origin timestamp not available");
+							}
+
 							// TODO(soulk): Publisher에서 Timestamp를 90000Hz로 변경하는 코드를 넣어야함. 지금은 임시로 넣음.
-							encoded_frame->_time_stamp = ((double)cur_buf->GetPts() / (double)1000000 * (double)90000);
+							encoded_frame->_time_stamp = ((double)pts / (double)1000000 * (double)90000);
 
 							// logtd("Video PTS: %ld", encoded_frame->time_stamp);
 							// encoded_frame->_timeStamp = (uint32_t)cur_buf->GetPts();

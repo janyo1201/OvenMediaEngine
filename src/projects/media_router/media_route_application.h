@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
 
 #include "base/media_route/media_route_application_observer.h"
 #include "base/media_route/media_route_application_connector.h"
@@ -42,6 +43,7 @@ class RelayClient;
 
 class MediaRouteApplication : public MediaRouteApplicationInterface
 {
+	typedef std::unordered_map<uint32_t, std::pair<MediaTimestamp, MediaTimestamp>> OriginTimestampMap;
 public:
 	static std::shared_ptr<MediaRouteApplication> Create(const info::Application *application_info);
 
@@ -70,19 +72,25 @@ public:
 	// 스트림 생성
 	bool OnCreateStream(
 		std::shared_ptr<MediaRouteApplicationConnector> app_conn,
-		std::shared_ptr<StreamInfo> stream) override;
+		std::shared_ptr<StreamInfo> stream_info) override;
 
 	// 스트림 삭제
 	bool OnDeleteStream(
 		std::shared_ptr<MediaRouteApplicationConnector> app_conn,
-		std::shared_ptr<StreamInfo> stream) override;
+		std::shared_ptr<StreamInfo> stream_info) override;
 
 	// 미디어 버퍼 수신
 	bool OnReceiveBuffer(
 		std::shared_ptr<MediaRouteApplicationConnector> app_conn,
-		std::shared_ptr<StreamInfo> stream,
+		std::shared_ptr<StreamInfo> stream_info,
 		std::unique_ptr<MediaPacket> packet) override;
 
+
+	bool OnReceiveOriginTimestamp(
+		std::shared_ptr<MediaRouteApplicationConnector> app_conn,
+		std::shared_ptr<StreamInfo> stream_info,
+		const MediaTimestamp &stream_timestamp,
+		const MediaTimestamp &origin_timestamp) override;
 
 public:
 
@@ -147,4 +155,6 @@ protected:
 	std::shared_ptr<RelayServer>    _relay_server;
 	std::shared_ptr<RelayClient>    _relay_client;
 	ov::DelayQueue                  _retry_timer;
+	std::mutex                      _stream_origin_timestamp_mutex;
+	OriginTimestampMap              _stream_origin_timestamps;
 };

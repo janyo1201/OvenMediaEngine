@@ -617,6 +617,7 @@ bool TranscodeStream::AddStreamInfoOutput(ov::String stream_name)
 
 	auto stream_info_output = std::make_shared<StreamInfo>();
 	stream_info_output->SetName(stream_name);
+	stream_info_output->SetOriginId(_stream_info_input->GetId());
 
 	_stream_info_outputs.insert(
 		std::make_pair(stream_name, stream_info_output)

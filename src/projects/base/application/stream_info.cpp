@@ -5,7 +5,7 @@
 
 using namespace common;
 
-StreamInfo::StreamInfo()
+StreamInfo::StreamInfo() : _origin_id(0)
 {
 	// 소스 타입
 	// _input_source_type = kSourceTypeOrigin;
@@ -23,6 +23,7 @@ StreamInfo::StreamInfo(const StreamInfo &stream_info)
 {
 	_id = stream_info._id;
 	_name = stream_info._name;
+	_origin_id = stream_info._origin_id;
 
 	for(auto &track : stream_info._tracks)
 	{
@@ -165,4 +166,15 @@ void StreamInfo::ShowInfo()
 	}
 
 	logti("%s", out_str.CStr());
+}
+
+
+uint32_t StreamInfo::GetOriginId() const
+{
+	return _origin_id;
+}
+
+void StreamInfo::SetOriginId(uint32_t origin_id)
+{
+	_origin_id = origin_id;
 }

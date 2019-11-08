@@ -85,22 +85,22 @@ namespace common
 			_den = den;
 		}
 
-		int32_t GetNum()
+		int32_t GetNum() const
 		{
 			return _num;
 		}
 
-		int32_t GetDen()
+		int32_t GetDen() const
 		{
 			return _den;
 		}
 
-		double GetExpr()
+		double GetExpr() const
 		{
 			return (double)_num / (double)_den;
 		}
 
-		ov::String ToString()
+		ov::String ToString() const
 		{
 			return ov::String::FormatString("%d/%d", GetNum(), GetDen());
 		}

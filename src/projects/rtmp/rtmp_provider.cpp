@@ -285,9 +285,9 @@ bool RtmpProvider::OnAudioData(info::application_id_t application_id,
 // OnDeleteStream
 // - RtmpObserver 구현
 //====================================================================================================
-bool RtmpProvider::OnDeleteStream(info::application_id_t app_id, uint32_t stream_id)
+bool RtmpProvider::OnDeleteStream(info::application_id_t application_id, uint32_t stream_id)
 {
-	auto application = std::dynamic_pointer_cast<RtmpApplication>(GetApplicationById(app_id));
+	auto application = std::dynamic_pointer_cast<RtmpApplication>(GetApplicationById(application_id));
 	if(application == nullptr)
 	{
 		logte("cannot find application");
@@ -303,4 +303,26 @@ bool RtmpProvider::OnDeleteStream(info::application_id_t app_id, uint32_t stream
 
 	// 라우터에 스트림이 삭제되었다고 알림
 	return application->DeleteStream2(stream);
+}
+
+bool RtmpProvider::OnOriginTimestamp(info::application_id_t application_id,
+                                     uint32_t stream_id,
+                                     const MediaTimestamp& stream_timestamp,
+                                     const MediaTimestamp& origin_timestamp)
+{
+	auto application = std::dynamic_pointer_cast<RtmpApplication>(GetApplicationById(application_id));
+	if(application == nullptr)
+	{
+		logte("cannot find application");
+		return false;
+	}
+
+	auto stream = std::dynamic_pointer_cast<RtmpStream>(application->GetStreamById(stream_id));
+	if(stream == nullptr)
+	{
+		logte("cannot find stream");
+		return false;
+	}
+
+	return application->SendOriginTimestamp(stream, stream_timestamp, origin_timestamp);
 }

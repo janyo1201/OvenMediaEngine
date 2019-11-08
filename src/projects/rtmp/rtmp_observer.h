@@ -13,6 +13,7 @@
 #include <memory>
 #include <base/ovlibrary/ovlibrary.h>
 #include <config/config.h>
+#include <base/media_route/media_timestamp.h>
 
 class RtmpObserver : public ov::EnableSharedFromThis<RtmpObserver>
 {
@@ -28,5 +29,7 @@ public:
 
 	// 스트림 삭제
 	virtual bool OnDeleteStream(info::application_id_t application_id, uint32_t stream_id) = 0;
+
+	virtual bool OnOriginTimestamp(info::application_id_t application_id, uint32_t stream_id, const MediaTimestamp& stream_timestamp, const MediaTimestamp& origin_timestamp) = 0;
 
 };

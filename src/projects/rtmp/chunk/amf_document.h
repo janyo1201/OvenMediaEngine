@@ -127,7 +127,7 @@ public:
 
     bool GetBoolean() { return _boolean; }
 
-    char *GetString() { return _string; }
+    char *GetString() const { return _string; }
 
     AmfArray *GetArray() { return _array; }
 
@@ -186,20 +186,20 @@ public:
     int FindName(const char *name); // ret<0이면 실패
     char *GetName(int index);
 
-    AmfDataType GetType(int index);
+    AmfDataType GetType(int index) const;
 
     double GetNumber(int index);
 
     bool GetBoolean(int index);
 
-    char *GetString(int index);
+    char *GetString(int index) const;
 
     AmfArray *GetArray(int index);
 
     AmfObject *GetObject(int index);
 
 private:
-    tPROPERTY_PAIR *_GetPair(int index);
+    tPROPERTY_PAIR *_GetPair(int index) const;
 
 private:
     AmfDataType _amf_data_type;
