@@ -11,6 +11,10 @@
 
 #define OV_LOG_TAG "TranscodeCodec"
 
+#if defined(__APPLE__)
+typedef unsigned char __u_char;
+#endif
+
 OvenCodecImplAvcodecEncAVC::~OvenCodecImplAvcodecEncAVC()
 {
 	if(_encoder)

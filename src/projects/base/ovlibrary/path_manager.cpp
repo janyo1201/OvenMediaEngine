@@ -11,7 +11,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include <wordexp.h>
+#if defined(__linux__)
 #include <linux/limits.h>
+#elif defined(__APPLE__)
+#include <sys/stat.h>
+typedef mode_t __mode_t;
+#endif
 
 #include "path_manager.h"
 

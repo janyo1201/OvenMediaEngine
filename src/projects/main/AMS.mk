@@ -32,6 +32,10 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_PREBUILT_LIBRARIES := \
 	libpugixml.a
 
+LOCAL_CFLAGS := `pkg-config --cflags srt` 
+
+LOCAL_CXXFLAGS := `pkg-config --cflags srt`
+
 LOCAL_LDFLAGS := \
 	-lpthread \
 	-ldl \

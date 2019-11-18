@@ -11,5 +11,8 @@ LOCAL_HEADER_FILES := $(LOCAL_HEADER_FILES) $(call get_sub_source_list,bitstream
 
 LOCAL_TARGET := mediarouter
 
+LOCAL_CFLAGS := $(shell pkg-config --cflags srt)
+LOCAL_CXXFLAGS := $(shell pkg-config --cflags srt)
+
 include $(BUILD_STATIC_LIBRARY)
 # include $(BUILD_EXECUTABLE)

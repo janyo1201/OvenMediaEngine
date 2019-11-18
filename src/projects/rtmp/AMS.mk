@@ -18,5 +18,8 @@ LOCAL_TARGET := rtmpprovider
 LOCAL_SOURCE_FILES := $(LOCAL_SOURCE_FILES) $(call get_sub_source_list,chunk)
 LOCAL_HEADER_FILES := $(LOCAL_HEADER_FILES) $(call get_sub_source_list,chunk)
 
+LOCAL_CFLAGS := $(shell pkg-config --cflags srt)
+LOCAL_CXXFLAGS := $(shell pkg-config --cflags srt)
+
 include $(BUILD_STATIC_LIBRARY)
 # include $(BUILD_EXECUTABLE)

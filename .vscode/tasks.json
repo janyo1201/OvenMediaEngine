@@ -1,0 +1,36 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "make (macOS)",
+            "type": "shell",
+            "command": "make -f Makefile",
+            "options": {
+                "cwd": "${workspaceFolder}/src",
+                "env": {
+                    "PKG_CONFIG_PATH": "${workspaceFolder}/build/prerequisites/lib/pkgconfig",
+                    "ARCH": "-arch x86_64"
+                }
+            },
+            "group": "build",
+            "problemMatcher":"$gcc",
+            "dependsOn": [
+                "obtain prerequisites"
+            ]
+        },
+        {
+            "label": "obtain prerequisites",
+            "type": "shell",
+            "command": "${workspaceFolder}/misc/prerequisites.sh",
+            "options": {
+                "env": {
+                    "WORKDIR":  "${workspaceFolder}/build",
+                    "CACHED_BUILD": "1"
+                }
+            },
+            "problemMatcher": []
+        }
+    ]
+}

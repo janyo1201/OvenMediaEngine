@@ -3,4 +3,7 @@ include $(DEFAULT_VARIABLES)
 
 LOCAL_TARGET := rtp_rtcp
 
+LOCAL_CFLAGS := $(shell pkg-config --cflags srt)
+LOCAL_CXXFLAGS := $(shell pkg-config --cflags srt)
+
 include $(BUILD_STATIC_LIBRARY)

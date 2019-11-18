@@ -12,3 +12,5 @@ CMakeLists.txt
 *.d
 *.pc
 *.texi
+
+build/
