@@ -186,7 +186,14 @@ install_libvpx()
         LIBVPX_PREFIX="--prefix=$PREFIX"
     fi
 
-    ./configure $LIBVPX_PREFIX --enable-shared --disable-static --disable-examples && ${MAKE} || exit 1
+    ADDITIONAL_FLAGS=
+    if [ "x${OSNAME}" == "xMac OS X" ]; then
+        case $OSVERSION in
+            10.12.* | 10.13.* | 10.14.* ) ADDITIONAL_FLAGS=--target=x86_64-darwin16-gcc;;
+        esac
+    fi
+
+    ./configure $LIBVPX_PREFIX $ADDITIONAL_FLAGS --enable-shared --disable-static --disable-examples && ${MAKE} || exit 1
 
     if [[ ! -z "$PREFIX" && -w "$PREFIX" ]]; then
         make install || exit 1
@@ -351,7 +358,12 @@ install_base_centos()
 
 install_base_macos()
 {
-    brew install nasm automake libtool xz cmake
+    BREW_PATH=$(which brew)
+    if [ ! -x "$BREW_PATH" ] ; then
+        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || exit 1
+    fi
+
+    brew install pkg-config nasm automake libtool xz cmake
 
     export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
     export PATH=/usr/local/bin:$PATH
