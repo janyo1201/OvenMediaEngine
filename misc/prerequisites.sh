@@ -312,13 +312,15 @@ install_libopenh264()
 
     if [[ -w "$DESTINATION" ]]; then
         mv ${OPENH264_BINARY_NAME} ${DESTINATION} \
+        && chmod a+x ${DESTINATION}/${OPENH264_BINARY_NAME} \
         && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.${LIBRARY_EXTENSION} \
-        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.${LIBRARY_EXTENSION}.4 \
+        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.4.${LIBRARY_EXTENSION} \
         || exit 1
     else
         sudo mv ${OPENH264_BINARY_NAME} ${DESTINATION} \
+        && chmod a+x ${DESTINATION}/${OPENH264_BINARY_NAME} \
         && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.${LIBRARY_EXTENSION} \
-        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.${LIBRARY_EXTENSION}.4 \
+        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.4.${LIBRARY_EXTENSION} \
         || exit 1
     fi
 }

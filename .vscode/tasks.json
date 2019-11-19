@@ -6,12 +6,13 @@
         {
             "label": "make (macOS)",
             "type": "shell",
-            "command": "make -f Makefile",
+            "command": "make -f Makefile && ${workspaceFolder}/misc/macos_fix_dylib_paths.sh ${workspaceFolder}/src/bin/DEBUG/OvenMediaEngine",
             "options": {
                 "cwd": "${workspaceFolder}/src",
                 "env": {
                     "PKG_CONFIG_PATH": "${workspaceFolder}/build/prerequisites/lib/pkgconfig",
-                    "ARCH": "-arch x86_64"
+                    "ARCH": "-arch x86_64",
+                    "PREFIX": "${workspaceFolder}/build/prerequisites/lib"
                 }
             },
             "group": "build",
