@@ -82,7 +82,7 @@ protected:
 
 private :
     std::shared_ptr<PhysicalPort> _physical_port;
-    std::map<ov::Socket *, std::shared_ptr<RtmpChunkStream>> _chunk_stream_list;
+    std::map<std::shared_ptr<ov::Socket>, std::shared_ptr<RtmpChunkStream>> _chunk_stream_list;
     std::vector<std::shared_ptr<RtmpObserver>> _observers;
 
     ov::DelayQueue _garbage_check_timer;

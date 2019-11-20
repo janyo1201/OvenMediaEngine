@@ -48,6 +48,7 @@ public:
 
 	time_t getLastReceivedTime();
 private:
+	std::mutex _mutex;
 	std::queue<std::unique_ptr<MediaPacket>> _queue;
 
 private:

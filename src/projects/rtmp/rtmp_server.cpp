@@ -128,7 +128,7 @@ void RtmpServer::OnConnected(const std::shared_ptr<ov::Socket> &remote)
 
     std::unique_lock<std::recursive_mutex> lock(_chunk_stream_list_mutex);
 
-    _chunk_stream_list[remote.get()] = std::make_shared<RtmpChunkStream>(dynamic_cast<ov::ClientSocket *>(remote.get()), this);
+    _chunk_stream_list[remote] = std::make_shared<RtmpChunkStream>(dynamic_cast<ov::ClientSocket *>(remote.get()), this);
 }
 
 //====================================================================================================
@@ -145,7 +145,7 @@ bool RtmpServer::Disconnect(const ov::String &app_name, uint32_t stream_id)
 
         if(chunk_stream->GetAppName() == app_name && chunk_stream->GetStreamId()== stream_id)
         {
-	        _physical_port->DisconnectClient(dynamic_cast<ov::ClientSocket *>(item->first));
+	        _physical_port->DisconnectClient(dynamic_cast<ov::ClientSocket *>(item->first.get()));
             _chunk_stream_list.erase(item);
             return true;
         }
@@ -164,7 +164,7 @@ void RtmpServer::OnDataReceived(const std::shared_ptr<ov::Socket> &remote,
 {
     std::unique_lock<std::recursive_mutex> lock(_chunk_stream_list_mutex);
 
-	auto item = _chunk_stream_list.find(remote.get());
+	auto item = _chunk_stream_list.find(remote);
 
 	// clinet 세션 확인
 	if(item != _chunk_stream_list.end())
@@ -194,7 +194,7 @@ void RtmpServer::OnDataReceived(const std::shared_ptr<ov::Socket> &remote,
             }
 
             // Socket Close
-            _physical_port->DisconnectClient(dynamic_cast<ov::ClientSocket *>(item->first));
+            _physical_port->DisconnectClient(dynamic_cast<ov::ClientSocket *>(item->first.get()));
 
             logti("Rtmp input stream disconnect - stream(%s/%s) id(%u/%u) remote(%s)",
                   item->second->GetAppName().CStr(),
@@ -221,7 +221,7 @@ void RtmpServer::OnDisconnected(const std::shared_ptr<ov::Socket> &remote,
 {
 	std::unique_lock<std::recursive_mutex> lock(_chunk_stream_list_mutex);
 
-    auto item = _chunk_stream_list.find(remote.get());
+    auto item = _chunk_stream_list.find(remote);
 
     if(item != _chunk_stream_list.end())
     {
@@ -405,7 +405,7 @@ void RtmpServer::OnGarbageCheck()
             }
 
             // Socket Close
-	        _physical_port->DisconnectClient(dynamic_cast<ov::ClientSocket *>(item->first));
+	        _physical_port->DisconnectClient(dynamic_cast<ov::ClientSocket *>(item->first.get()));
 
             logtw("Rtmp input stream  timeout remove - stream(%s/%s) id(%u/%u) time(%d/%d)",
                   item->second->GetAppName().CStr(),

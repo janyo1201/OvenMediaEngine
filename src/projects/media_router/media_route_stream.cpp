@@ -105,6 +105,7 @@ bool MediaRouteStream::Push(std::unique_ptr<MediaPacket> buffer, bool convert_bi
 #endif
 
 	// 변경된 스트림을 큐에 넣음
+	std::lock_guard<std::mutex> lock(_mutex);
 	_queue.push(std::move(buffer));
 
 	time(&_last_rb_time);
@@ -115,6 +116,7 @@ bool MediaRouteStream::Push(std::unique_ptr<MediaPacket> buffer, bool convert_bi
 
 std::unique_ptr<MediaPacket> MediaRouteStream::Pop()
 {
+	std::lock_guard<std::mutex> lock(_mutex);
 	if(_queue.empty())
 	{
 		return nullptr;

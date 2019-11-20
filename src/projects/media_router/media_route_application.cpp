@@ -469,6 +469,11 @@ void MediaRouteApplication::MainTask()
 
 			// Find Media Track
 			auto media_track = stream_info->GetTrack(cur_buf->GetTrackId());
+			if (media_track == nullptr)
+			{
+				logte("media track is nullptr - stream_id/track(%u/%u)", indicator->_stream_id, cur_buf->GetTrackId());
+				continue;
+			}
 
 			// Transcoder -> MediaRouter -> RelayClient
 			// or
