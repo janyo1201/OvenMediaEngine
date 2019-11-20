@@ -424,6 +424,24 @@ std::shared_ptr<ov::Error> RtcSignallingServer::DispatchCommand(const ov::String
 		return DispatchRequestOffer(info, response);
 	}
 
+	if(command == "server_time")
+	{
+		timespec current_time{};
+		if (clock_gettime(CLOCK_REALTIME, &current_time) == 0)
+		{
+			ov::JsonObject response_json;
+			Json::Value &value = response_json.GetJsonValue();
+			value["command"] = command.CStr();
+			value["value"] = static_cast<uint64_t>(current_time.tv_sec) * 1000 + current_time.tv_nsec / (1000 * 1000);
+			response->Send(response_json.ToString());
+			return nullptr;
+		}
+		else
+		{
+			return ov::Error::CreateError(HttpStatusCode::InternalServerError, "System call failed");			
+		}
+	}
+
 	if(info->id != object.GetInt64Value("id"))
 	{
 		return ov::Error::CreateError(HttpStatusCode::BadRequest, "Invalid ID");
