@@ -22,6 +22,98 @@
 
 #define USE_STATS_COUNTER                       0
 
+#if defined(__APPLE__)
+#include <unordered_map>
+#include <mutex>
+
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
+{
+	// EV_DELETE needs the filter flags upon deletion so store them locally, since epoll does not
+	// need this thus the original event will not be passed in with EPOLL_CTL_DEL
+	static std::mutex mutex;
+	static std::unordered_map<int, uint32_t> event_data;
+	int flags = 0, filter = 0;
+	struct kevent ke {};
+	switch (op)
+	{
+	case EPOLL_CTL_ADD:
+		flags = EV_ADD;
+		if ((event->events & EPOLLIN) == EPOLLIN)
+		{
+			filter = EVFILT_READ;
+		}
+		else if ((event->events & EPOLLOUT) == EPOLLOUT)
+		{
+			filter = EVFILT_WRITE;
+		}
+		else
+		{
+			exit(1);
+		}
+		{
+			if (event)
+			{
+				std::lock_guard<decltype(mutex)> lock(mutex);
+				event_data[fd] = filter;
+			}
+		}		
+		break;
+	case EPOLL_CTL_DEL:
+		flags = EV_DELETE;
+		{
+			std::lock_guard<decltype(mutex)> lock(mutex);
+			const auto it = event_data.find(fd);
+			if (it != event_data.end())
+			{
+				filter = it->second;
+			}
+			else
+			{
+				exit(1);
+			}
+			
+		}
+		break;
+	}
+	EV_SET(&ke, fd, filter, flags, 0, 0, event != nullptr ? event->data.ptr : nullptr);
+	int result = kevent(epfd, &ke, 1, nullptr, 0, nullptr);
+	return result;
+}
+
+int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
+{
+	struct kevent ke[maxevents];
+	const timespec t 
+	{
+		.tv_sec = timeout / 1000,
+		.tv_nsec = (timeout % 1000) * 1000 * 1000
+	};
+	int result = kevent(epfd, nullptr, 0, ke, maxevents, timeout == -1 ? nullptr : & t);
+	if (result > 0)
+	{
+		for (int event_index = 0; event_index < result; ++event_index)
+		{
+			events[event_index].data.ptr = ke[event_index].udata;
+			events[event_index].events = 0;
+			if (ke[event_index].filter == EVFILT_READ)
+			{
+				events[event_index].events = EPOLLIN; 
+			}
+			else if (ke[event_index].filter == EVFILT_WRITE)
+			{
+				events[event_index].events = EPOLLOUT; 
+			}
+			else
+			{
+				exit(1);
+			}
+			
+		}
+	}
+	return result;
+}
+#endif
+
 namespace ov
 {
 #if USE_STATS_COUNTER

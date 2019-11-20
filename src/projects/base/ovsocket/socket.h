@@ -51,41 +51,8 @@ constexpr int EPOLLWAKEUP	= 0x0800;
 constexpr int EPOLLONESHOT	= 0x1000;
 constexpr int EPOLLET		= 0x2000;
 
-static inline int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
-{
-	int flags = 0, fflags = 0;
-	struct kevent ke {};
-	switch (op)
-	{
-	case EPOLL_CTL_ADD:
-		flags = EV_ADD;
-		if (event->events & EPOLLIN)
-		{
-			fflags |= EVFILT_READ;
-		}
-		if (event->events & EPOLLOUT)
-		{
-			fflags |= EVFILT_WRITE;
-		}
-		break;
-	case EPOLL_CTL_DEL:
-		flags = EV_DELETE;
-		break;
-	}
-	EV_SET(&ke, fd, flags, fflags, 0, 0, event->data.ptr);
-	return kevent(epfd, &ke, 1, nullptr, 0, nullptr);
-}
-
-static inline int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
-{
-	struct kevent ke[maxevents];
-	const timespec t 
-	{
-		.tv_sec = timeout / 1000,
-		.tv_nsec = (timeout % 1000) * 1000 * 1000
-	};
-	return kevent(epfd, nullptr, 0, ke, maxevents, timeout == -1 ? nullptr : & t);
-}
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
+int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
 
 // macOS does not have a MSG_NOSIGNAL, has a SO_NOSIGPIPE, need to test to understand equality
 #define MSG_NOSIGNAL 0x2000
