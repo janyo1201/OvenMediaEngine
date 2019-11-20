@@ -26,6 +26,11 @@ namespace cfg
 			return _p2p;
 		}
 
+		int GetServerTimeOffset() const
+		{
+			return _server_time_offset;
+		}
+
 	protected:
 		void MakeParseList() const override
 		{
@@ -33,9 +38,11 @@ namespace cfg
 
 			RegisterValue<Optional>("Timeout", &_timeout);
 			RegisterValue<Optional>("P2P", &_p2p);
+			RegisterValue<Optional>("ServerTimeOffset", &_server_time_offset);
 		}
 
 		int _timeout = 0;
 		P2P _p2p;
+		int _server_time_offset = 0;
 	};
 }

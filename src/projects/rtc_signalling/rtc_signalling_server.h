@@ -110,4 +110,6 @@ protected:
 	std::mutex _client_list_mutex;
 
 	RtcP2PManager _p2p_manager;
+
+	int32_t _server_time_offset;
 };

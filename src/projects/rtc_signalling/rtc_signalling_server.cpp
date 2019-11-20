@@ -18,7 +18,8 @@
 
 RtcSignallingServer::RtcSignallingServer(const info::Application *application_info, std::shared_ptr<MediaRouteApplicationInterface> application)
 	: _application_info(application_info),
-	  _application(std::move(application))
+	  _application(std::move(application)),
+	  _server_time_offset(0)
 {
 	_webrtc_publisher_info = _application_info->GetPublisher<cfg::WebrtcPublisher>();
 
@@ -29,6 +30,7 @@ RtcSignallingServer::RtcSignallingServer(const info::Application *application_in
 	}
 
 	_p2p_info = &(_webrtc_publisher_info->GetP2P());
+	_server_time_offset = _webrtc_publisher_info->GetServerTimeOffset();
 }
 
 bool RtcSignallingServer::Start(const ov::SocketAddress &address)
@@ -432,7 +434,7 @@ std::shared_ptr<ov::Error> RtcSignallingServer::DispatchCommand(const ov::String
 			ov::JsonObject response_json;
 			Json::Value &value = response_json.GetJsonValue();
 			value["command"] = command.CStr();
-			value["value"] = static_cast<uint64_t>(current_time.tv_sec) * 1000 + current_time.tv_nsec / (1000 * 1000);
+			value["value"] = static_cast<uint64_t>(current_time.tv_sec) * 1000 + current_time.tv_nsec / (1000 * 1000) + _server_time_offset;
 			response->Send(response_json.ToString());
 			return nullptr;
 		}
