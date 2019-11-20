@@ -432,9 +432,24 @@ std::shared_ptr<ov::Error> RtcSignallingServer::DispatchCommand(const ov::String
 		if (clock_gettime(CLOCK_REALTIME, &current_time) == 0)
 		{
 			ov::JsonObject response_json;
+			current_time.tv_nsec += _server_time_offset * 1000 * 1000;
 			Json::Value &value = response_json.GetJsonValue();
 			value["command"] = command.CStr();
-			value["value"] = static_cast<uint64_t>(current_time.tv_sec) * 1000 + current_time.tv_nsec / (1000 * 1000) + _server_time_offset;
+			value["value"] = static_cast<uint64_t>(current_time.tv_sec) * 1000 + current_time.tv_nsec / (1000 * 1000);
+			value["status"] = 200;
+			time_t current_time_seconds = current_time.tv_sec;
+			std::tm time;
+			gmtime_r(&current_time_seconds, &time);
+			// dd-mm-yyyy + null terminator
+			constexpr size_t sd_length = 2 /* dd */ + 1 /* - */ + 2 /* mm */ + 1 /* - */ + 4 /* yyyy */ + 1 /* \0 */;
+			char sd[sd_length] = {};
+			snprintf(sd, sizeof(sd), "%02u-%02u-%04u", time.tm_mday, time.tm_mon + 1, time.tm_year + 1900);
+			// hh:mm:ss.MMM + null terminator
+			constexpr size_t st_length = 2 /* hh */ + 1 /* : */ + 2 /* mm */ + 1 /* : */ + 2 /* ss */ + 1 /* . */ + 3 /* MMM */ + 1 /* \0 */;
+			char st[st_length] = {};
+			snprintf(st, sizeof(st), "%02u:%02u:%02u.%03u", time.tm_hour, time.tm_min, time.tm_sec, static_cast<unsigned int>(current_time.tv_nsec / (1000 * 1000)));
+			value["sd"] = sd;
+			value["st"] = st;
 			response->Send(response_json.ToString());
 			return nullptr;
 		}
