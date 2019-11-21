@@ -26,56 +26,114 @@
 #include <unordered_map>
 #include <mutex>
 
+/*
+	This is an experimental wrapper class for epoll functionality on macOS
+ */
+class Epoll
+{
+	struct epoll_data_t
+	{
+		uint32_t	_events; /* original event mask from epoll_event */
+		void*		_ptr; /* original ptr from epoll_event */
+		int			_filter; /* computed filter */
+
+		epoll_data_t(uint32_t events, void* ptr, int filter) : _events(events),
+			_ptr(ptr),
+			_filter(filter)
+		{
+		}
+	};
+
+public:
 int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
 {
 	// EV_DELETE needs the filter flags upon deletion so store them locally, since epoll does not
 	// need this thus the original event will not be passed in with EPOLL_CTL_DEL
-	static std::mutex mutex;
-	static std::unordered_map<int, uint32_t> event_data;
-	int flags = 0, filter = 0;
-	struct kevent ke {};
+		epoll_data_t* epoll_data = nullptr;
+		struct kevent ke{};
 	switch (op)
 	{
 	case EPOLL_CTL_ADD:
-		flags = EV_ADD;
-		if ((event->events & EPOLLIN) == EPOLLIN)
+			if (event == nullptr)
 		{
-			filter = EVFILT_READ;
+				return EINVAL;
 		}
-		else if ((event->events & EPOLLOUT) == EPOLLOUT)
+			if ((event->events & (EPOLLIN | EPOLLOUT)) == (EPOLLIN | EPOLLOUT))
 		{
-			filter = EVFILT_WRITE;
+				// This wrapper currently does not support EPOLLIN | EPOLLOUT, but there is no such use case so far,
+				// this is not trivial since two explicit kevent structures need to be added in this case and when epoll_wait
+				// needs to know how to combine the flags back together
+				logte("epoll_ctl() currently does not support EPOLLIN | EPOLLOUT");
+				return EINVAL;
 		}
-		else
 		{
-			exit(1);
+				const auto events = event->events;
+				ke.flags = EV_ADD;
+				if (event->events & EPOLLIN)
+				{
+					if (event->events & EPOLLET)
+					{
+						ke.flags |= EV_CLEAR;	
 		}
+					ke.filter = EVFILT_READ;
+					event->events &= ~EPOLLIN;
+				}
+				else if (event->events & EPOLLOUT)
 		{
-			if (event)
+					if (event->events & EPOLLET)
 			{
-				std::lock_guard<decltype(mutex)> lock(mutex);
-				event_data[fd] = filter;
+						ke.flags |= EV_CLEAR;	
+					}
+					ke.filter = EVFILT_WRITE;
+					event->events &= ~EPOLLOUT;
+				}
+				if (event->events & EPOLLET)
+				{
+					event->events &= ~EPOLLET;
+				}
+				if (event->events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
+				{
+					event->events &= ~(EPOLLERR | EPOLLHUP | EPOLLRDHUP);
+				}
+				if (event->events != 0)
+				{
+					// Unhandled epoll flags provided
+					logte("unhandled flags %u passed to epoll_ctl", event->events);
+					return EINVAL;
+				}
+				std::unique_lock<decltype(_mutex)> lock(_mutex);
+				auto& epoll_fd_data = _epoll_data[epfd];
+				if (epoll_fd_data.find(fd) != epoll_fd_data.end())
+				{
+
+					lock.unlock();
+					logte("socket %d has already been added to epoll %d", fd, epfd);
+					return EINVAL;
 			}
+				epoll_data = &_epoll_data[epfd].emplace(std::piecewise_construct, std::forward_as_tuple(fd), std::forward_as_tuple(events, event->data.ptr, ke.filter)).first->second;
 		}		
 		break;
 	case EPOLL_CTL_DEL:
-		flags = EV_DELETE;
+			ke.flags = EV_DELETE;
 		{
-			std::lock_guard<decltype(mutex)> lock(mutex);
-			const auto it = event_data.find(fd);
-			if (it != event_data.end())
+				std::lock_guard<decltype(_mutex)> lock(_mutex);
+				auto& epoll_fd_data = _epoll_data[epfd];
+				const auto it = epoll_fd_data.find(fd);
+				if (it != epoll_fd_data.end())
 			{
-				filter = it->second;
+					ke.filter = it->second._filter;
+					epoll_fd_data.erase(fd);
 			}
 			else
 			{
-				exit(1);
+					logte("socket %d has not been added to epoll %d", fd, epfd);
+					return EINVAL;
 			}
 			
 		}
 		break;
 	}
-	EV_SET(&ke, fd, filter, flags, 0, 0, event != nullptr ? event->data.ptr : nullptr);
+		EV_SET(&ke, fd, ke.filter, ke.flags, 0, 0, epoll_data);
 	int result = kevent(epfd, &ke, 1, nullptr, 0, nullptr);
 	return result;
 }
@@ -83,6 +141,7 @@ int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
 int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 {
 	struct kevent ke[maxevents];
+		memset(&ke, 0, sizeof(ke));
 	const timespec t 
 	{
 		.tv_sec = timeout / 1000,
@@ -93,24 +152,78 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	{
 		for (int event_index = 0; event_index < result; ++event_index)
 		{
-			events[event_index].data.ptr = ke[event_index].udata;
+				const auto* epoll_data = static_cast<epoll_data_t*>(ke[event_index].udata);
+				if (epoll_data == nullptr)
+				{
+					// This should never happen, but must be at least gracefully handled
+					logte("kevent() returned a kevent structure with an empty udata field");
+					exit(1);
+				}
+				events[event_index].data.ptr = epoll_data->_ptr;
 			events[event_index].events = 0;
 			if (ke[event_index].filter == EVFILT_READ)
 			{
+					if ((ke[event_index].flags & EV_EOF))
+					{
+						if (epoll_data->_events & EPOLLRDHUP)
+						{
+							events[event_index].events = EPOLLRDHUP;
+						}
+					}
+					else
+					{
 				events[event_index].events = EPOLLIN; 
 			}
+				}
 			else if (ke[event_index].filter == EVFILT_WRITE)
 			{
+					if ((ke[event_index].flags & EV_EOF))
+					{
+						if (epoll_data->_events & EPOLLHUP)
+						{
+							events[event_index].events = EPOLLHUP;
+						}
+					}
+					else
+					{
 				events[event_index].events = EPOLLOUT; 
 			}
+				}
 			else
 			{
+					// TODO: unexpected filter value, currently just die, since returning something here
+					// might mess up the caller
+					logte("kevent() returned unexpected filter value %d", ke[event_index].filter);
 				exit(1);
 			}
+				if (ke[event_index].flags & EV_ERROR)
+				{
+					// TODO: handle EV_ERROR
+				}
 			
 		}
 	}
 	return result;
+}
+
+private:
+	static std::mutex _mutex;
+	static std::unordered_map<int, std::unordered_map<int, epoll_data_t>> _epoll_data;
+};
+
+std::mutex Epoll::_mutex;
+std::unordered_map<int, std::unordered_map<int, Epoll::epoll_data_t>> Epoll::_epoll_data;
+
+static Epoll epoll;
+
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
+{
+	return epoll.epoll_ctl(epfd, op, fd, event);
+}
+
+int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
+{
+	return epoll.epoll_wait(epfd, events, maxevents, timeout);
 }
 #endif
 
