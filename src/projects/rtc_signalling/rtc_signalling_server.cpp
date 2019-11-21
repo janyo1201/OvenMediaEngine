@@ -428,11 +428,22 @@ std::shared_ptr<ov::Error> RtcSignallingServer::DispatchCommand(const ov::String
 
 	if(command == "server_time")
 	{
+		constexpr int nanoseconds_in_second = 1000 * 1000 * 1000;
 		timespec current_time{};
 		if (clock_gettime(CLOCK_REALTIME, &current_time) == 0)
 		{
 			ov::JsonObject response_json;
-			current_time.tv_nsec += _server_time_offset * 1000 * 1000;
+			long adjusted_nsec = current_time.tv_nsec + _server_time_offset * 1000 * 1000;
+			if (adjusted_nsec >= nanoseconds_in_second)
+			{
+				current_time.tv_sec += adjusted_nsec / nanoseconds_in_second;
+				current_time.tv_nsec = adjusted_nsec % nanoseconds_in_second;
+			}
+			else if (adjusted_nsec < 0)
+			{
+				current_time.tv_sec += adjusted_nsec / nanoseconds_in_second;
+				current_time.tv_nsec = nanoseconds_in_second - adjusted_nsec % nanoseconds_in_second;
+			}
 			Json::Value &value = response_json.GetJsonValue();
 			value["command"] = command.CStr();
 			value["value"] = static_cast<uint64_t>(current_time.tv_sec) * 1000 + current_time.tv_nsec / (1000 * 1000);
