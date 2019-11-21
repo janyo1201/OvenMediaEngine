@@ -126,10 +126,35 @@ TranscodeStream::TranscodeStream(const info::Application *application_info, std:
 
 		if((video_profile != nullptr) && (video_profile->IsActive()))
 		{
+			auto width = video_profile->GetWidth(), height = video_profile->GetHeight();
+			if (width == -1 || height == -1)
+			{
+				const auto& input_tracks = _stream_info_input->GetTracks();
+				auto video_input_track_iterator = input_tracks.end();
+				for (auto it = input_tracks.begin(); it != input_tracks.end(); ++it)
+				{
+					if (it->second->GetMediaType() == common::MediaType::Video)
+					{
+						video_input_track_iterator = it;
+						break;
+					}
+				}
+				if (video_input_track_iterator != input_tracks.end())
+				{
+					if (width == -1)
+					{
+						width = video_input_track_iterator->second->GetWidth();
+					}
+					if (height == -1)
+					{
+						height = video_input_track_iterator->second->GetHeight();
+					}
+				}
+			}
 			auto context = std::make_shared<TranscodeContext>(
 				GetCodecId(video_profile->GetCodec()),
 				GetBitrate(video_profile->GetBitrate()),
-				video_profile->GetWidth(), video_profile->GetHeight(),
+				width, height,
 				video_profile->GetFramerate()
 			);
 			uint8_t track_id = AddContext(common::MediaType::Video, context);
