@@ -11,19 +11,39 @@
 #include <unistd.h>
 #include <errno.h>
 #include <wordexp.h>
+#if defined(__linux__)
 #include <linux/limits.h>
+#elif defined(__APPLE__)
+#include <sys/stat.h>
+typedef mode_t __mode_t;
+#endif
 
 #include "path_manager.h"
 
 #include "memory_utilities.h"
 
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+
 namespace ov
 {
 	String PathManager::GetAppPath(String sub_path)
 	{
+#if defined(__APPLE__)
+		uint32_t path_length = 0;
+
+		if (_NSGetExecutablePath(nullptr, &path_length) == - 1 && path_length != 0)
+		{
+			auto buffer = std::make_unique<char[]>(path_length);
+			if (_NSGetExecutablePath(buffer.get(), &path_length) != -1)
+			{
+				return Combine(Combine(ExtractPath(String(buffer.get(), path_length - 1)), std::move(sub_path)), "");
+			}
+		}
+#elif !defined(__CYGWIN__)
 		char buffer[4096] = { 0 };
 
-#ifndef __CYGWIN__
 		if(readlink("/proc/self/exe", buffer, OV_COUNTOF(buffer)) != -1)
 		{
 			return Combine(Combine(ExtractPath(buffer), std::move(sub_path)), "");

@@ -6,4 +6,7 @@ LOCAL_TARGET := monitoring
 LOCAL_SOURCE_FILES := $(LOCAL_SOURCE_FILES)
 LOCAL_HEADER_FILES := $(LOCAL_HEADER_FILES)
 
+LOCAL_CFLAGS := $(shell pkg-config --cflags openssl)
+LOCAL_CXXFLAGS := $(shell pkg-config --cflags openssl)
+
 include $(BUILD_STATIC_LIBRARY)

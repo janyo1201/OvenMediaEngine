@@ -18,7 +18,8 @@
 
 RtcSignallingServer::RtcSignallingServer(const info::Application *application_info, std::shared_ptr<MediaRouteApplicationInterface> application)
 	: _application_info(application_info),
-	  _application(std::move(application))
+	  _application(std::move(application)),
+	  _server_time_offset(0)
 {
 	_webrtc_publisher_info = _application_info->GetPublisher<cfg::WebrtcPublisher>();
 
@@ -29,6 +30,7 @@ RtcSignallingServer::RtcSignallingServer(const info::Application *application_in
 	}
 
 	_p2p_info = &(_webrtc_publisher_info->GetP2P());
+	_server_time_offset = _webrtc_publisher_info->GetServerTimeOffset();
 }
 
 bool RtcSignallingServer::Start(const ov::SocketAddress &address)
@@ -422,6 +424,50 @@ std::shared_ptr<ov::Error> RtcSignallingServer::DispatchCommand(const ov::String
 	if(command == "request_offer")
 	{
 		return DispatchRequestOffer(info, response);
+	}
+
+	if(command == "server_time")
+	{
+		constexpr int nanoseconds_in_second = 1000 * 1000 * 1000;
+		timespec current_time{};
+		if (clock_gettime(CLOCK_REALTIME, &current_time) == 0)
+		{
+			ov::JsonObject response_json;
+			long adjusted_nsec = current_time.tv_nsec + _server_time_offset * 1000 * 1000;
+			if (adjusted_nsec >= nanoseconds_in_second)
+			{
+				current_time.tv_sec += adjusted_nsec / nanoseconds_in_second;
+				current_time.tv_nsec = adjusted_nsec % nanoseconds_in_second;
+			}
+			else if (adjusted_nsec < 0)
+			{
+				current_time.tv_sec += adjusted_nsec / nanoseconds_in_second;
+				current_time.tv_nsec = nanoseconds_in_second - adjusted_nsec % nanoseconds_in_second;
+			}
+			Json::Value &value = response_json.GetJsonValue();
+			value["command"] = command.CStr();
+			value["value"] = static_cast<uint64_t>(current_time.tv_sec) * 1000 + current_time.tv_nsec / (1000 * 1000);
+			value["status"] = 200;
+			time_t current_time_seconds = current_time.tv_sec;
+			std::tm time;
+			gmtime_r(&current_time_seconds, &time);
+			// dd-mm-yyyy + null terminator
+			constexpr size_t sd_length = 2 /* dd */ + 1 /* - */ + 2 /* mm */ + 1 /* - */ + 4 /* yyyy */ + 1 /* \0 */;
+			char sd[sd_length] = {};
+			snprintf(sd, sizeof(sd), "%02u-%02u-%04u", time.tm_mday, time.tm_mon + 1, time.tm_year + 1900);
+			// hh:mm:ss.MMM + null terminator
+			constexpr size_t st_length = 2 /* hh */ + 1 /* : */ + 2 /* mm */ + 1 /* : */ + 2 /* ss */ + 1 /* . */ + 3 /* MMM */ + 1 /* \0 */;
+			char st[st_length] = {};
+			snprintf(st, sizeof(st), "%02u:%02u:%02u.%03u", time.tm_hour, time.tm_min, time.tm_sec, static_cast<unsigned int>(current_time.tv_nsec / (1000 * 1000)));
+			value["sd"] = sd;
+			value["st"] = st;
+			response->Send(response_json.ToString());
+			return nullptr;
+		}
+		else
+		{
+			return ov::Error::CreateError(HttpStatusCode::InternalServerError, "System call failed");			
+		}
 	}
 
 	if(info->id != object.GetInt64Value("id"))

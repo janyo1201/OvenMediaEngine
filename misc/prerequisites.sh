@@ -1,14 +1,42 @@
 #!/bin/bash
 
-OSNAME=$(cat /etc/*-release | grep "^NAME" | tr -d "\"" | cut -d"=" -f2)
-OSVERSION=$(cat /etc/*-release | grep ^VERSION= | tr -d "\"" | cut -d"=" -f2 | cut -d"." -f1 | awk '{print  $1}')
-WORKDIR=/tmp/ovenmediaengine
-NCPU=$(nproc)
+if [[ -z "$WORKDIR" ]]; then
+    WORKDIR=/tmp/ovenmediaengine
+fi
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    NCPU=$(sysctl -n hw.ncpu)
+    OSNAME=$(sw_vers -productName)
+    OSVERSION=$(sw_vers -productVersion)
+else
+    NCPU=$(nproc)
+    OSNAME=$(cat /etc/*-release | grep "^NAME" | tr -d "\"" | cut -d"=" -f2)
+    OSVERSION=$(cat /etc/*-release | grep ^VERSION= | tr -d "\"" | cut -d"=" -f2 | cut -d"." -f1 | awk '{print  $1}')
+fi
+
 MAKE="make -j${NCPU}"
 CURRENT=$(pwd)
 
+check_cached_build()
+{
+    PACKAGE_NAME=$1
+    if [[ ! -z "$CACHED_BUILD" && -f "${WORKDIR}/$PACKAGE_NAME.prefix" ]]; then
+        CACHED_PREFIX=$(cat ${WORKDIR}/$PACKAGE_NAME.prefix)
+        if [[ "$PREFIX" == "$CACHED_PREFIX" ]]; then
+            echo "Skipping building $PACKAGE_NAME since ${WORKDIR}/$PACKAGE_NAME.build has the same prefix"
+            return 0
+        fi
+    fi
+    return 1
+}
+
 install_libsrt()
 {
+    LIBSRT_PACKAGE_NAME=srt-1.3.1
+    if check_cached_build $LIBSRT_PACKAGE_NAME; then
+        return 0
+    fi
+
     BUILD_PRG="LIBSRT"
 
     cd ${WORKDIR}
@@ -20,13 +48,29 @@ install_libsrt()
 
     cd ${BUILD_PRG}
 
-    ./configure
+    if [[ ! -z "$PREFIX" ]]; then
+        LIBSRT_PREFIX="--prefix=$PREFIX"
+        LIBSRT_OPENSSL_FLAGS="--openssl-include-dir=$PREFIX/include"
+    fi
 
-    ${MAKE} && sudo make install
+    ./configure $LIBSRT_PREFIX $LIBSRT_OPENSSL_FLAGS && ${MAKE} || exit 1
+
+    if [[ ! -z "$PREFIX" && -w "$PREFIX" ]]; then
+        make install || exit 1
+    else
+        sudo make install || exit 1
+    fi
+
+    echo $PREFIX > ${WORKDIR}/$LIBSRT_PACKAGE_NAME.prefix
 }
 
 install_libsrtp()
 {
+    LIBSRTP_PACKAGE_NAME=libsrtp-2.2.0
+    if check_cached_build $LIBSRTP_PACKAGE_NAME; then
+        return 0
+    fi
+
     BUILD_PRG="LIBSRTP"
 
     cd ${WORKDIR}
@@ -38,13 +82,28 @@ install_libsrtp()
 
     cd ${BUILD_PRG}
 
-    ./configure --enable-openssl
+    if [[ ! -z "$PREFIX" ]]; then
+        LIBSRTP_PREFIX="--prefix=$PREFIX"
+    fi
 
-    ${MAKE} && sudo make install
+    ./configure $LIBSRTP_PREFIX --enable-openssl && ${MAKE} || exit 1
+
+    if [[ ! -z "$PREFIX" && -w "$PREFIX" ]]; then
+        make install || exit 1
+    else
+        sudo make install || exit 1
+    fi
+
+    echo $PREFIX > ${WORKDIR}/$LIBSRTP_PACKAGE_NAME.prefix
 }
 
 install_fdk_aac()
 {
+    FDK_AAC_PACKAGE_NAME=fdk-aac-0.1.5
+    if check_cached_build $FDK_AAC_PACKAGE_NAME; then
+        return 0
+    fi
+
     BUILD_PRG="FDKAAC"
 
     cd ${WORKDIR}
@@ -56,13 +115,28 @@ install_fdk_aac()
 
     cd ${BUILD_PRG}
 
-    ./autogen.sh && ./configure
+    if [[ ! -z "$PREFIX" ]]; then
+        FDK_AAC_PREFIX="--prefix=$PREFIX"
+    fi
 
-    ${MAKE} && sudo make install
+    ./autogen.sh && ./configure $FDK_AAC_PREFIX && ${MAKE} || exit 1
+
+    if [[ ! -z "$PREFIX" && -w "$PREFIX" ]]; then
+        make install || exit 1
+    else
+        sudo make install || exit 1
+    fi
+
+    echo $PREFIX > ${WORKDIR}/$FDK_AAC_PACKAGE_NAME.prefix
 }
 
 install_libopus()
 {
+    LIBOPUS_PACKAGE_NAME=opus-1.1.13
+    if check_cached_build $LIBOPUS_PACKAGE_NAME; then
+        return 0
+    fi
+
     BUILD_PRG="OPUS"
 
     cd ${WORKDIR}
@@ -74,13 +148,28 @@ install_libopus()
 
     cd ${BUILD_PRG}
 
-    autoreconf -f -i && ./configure --enable-shared --disable-static
+    if [[ ! -z "$PREFIX" ]]; then
+        LIBOPUS_PREFIX="--prefix=$PREFIX"
+    fi
 
-    ${MAKE} && sudo make install
+    autoreconf -f -i && ./configure $LIBOPUS_PREFIX --enable-shared --disable-static && ${MAKE} || exit 1
+
+    if [[ ! -z "$PREFIX" && -w "$PREFIX" ]]; then
+        make install || exit 1
+    else
+        sudo make install || exit 1
+    fi
+
+    echo $PREFIX > ${WORKDIR}/$LIBOPUS_PACKAGE_NAME.prefix
 }
 
 install_libvpx()
 {
+    LIBVPX_PACKAGE_NAME=libvpx-1.7.0
+    if check_cached_build $LIBVPX_PACKAGE_NAME; then
+        return 0
+    fi
+
     BUILD_PRG="LIBVPX"
 
     cd ${WORKDIR}
@@ -93,31 +182,70 @@ install_libvpx()
 
     cd ${BUILD_PRG}
 
-    ./configure --enable-shared --disable-static --disable-examples
+    if [[ ! -z "$PREFIX" ]]; then
+        LIBVPX_PREFIX="--prefix=$PREFIX"
+    fi
 
-    ${MAKE} && sudo make install
+    ADDITIONAL_FLAGS=
+    if [ "x${OSNAME}" == "xMac OS X" ]; then
+        case $OSVERSION in
+            10.12.* | 10.13.* | 10.14.* ) ADDITIONAL_FLAGS=--target=x86_64-darwin16-gcc;;
+        esac
+    fi
+
+    ./configure $LIBVPX_PREFIX $ADDITIONAL_FLAGS --enable-shared --disable-static --disable-examples && ${MAKE} || exit 1
+
+    if [[ ! -z "$PREFIX" && -w "$PREFIX" ]]; then
+        make install || exit 1
+    else
+        sudo make install || exit 1
+    fi
+
+    echo $PREFIX > ${WORKDIR}/$LIBVPX_PACKAGE_NAME.prefix
 }
 
 install_openssl()
 {
+    OPENSSL_PACKAGE_NAME=openssl-1.1.0g
+    if check_cached_build $OPENSSL_PACKAGE_NAME; then
+        return 0
+    fi
+
     BUILD_PRG="OPENSSL"
 
     cd ${WORKDIR}
 
+    OPENSSL_PACKAGE_DOWNLOAD_NAME=$OPENSSL_PACKAGE_NAME.tar.gz
+
     if [ ! -d ${BUILD_PRG} ]; then
-        curl -OLf https://www.openssl.org/source/openssl-1.1.0g.tar.gz  || fail_exit ${BUILD_PRG}
-        tar xvfz openssl-1.1.0g.tar.gz -C ${WORKDIR} && rm -rf openssl-1.1.0g.tar.gz && mv openssl-* ${BUILD_PRG}
+        curl -OLf https://www.openssl.org/source/$OPENSSL_PACKAGE_DOWNLOAD_NAME  || fail_exit ${BUILD_PRG}
+        tar xvfz $OPENSSL_PACKAGE_DOWNLOAD_NAME -C ${WORKDIR} && rm -rf $OPENSSL_PACKAGE_DOWNLOAD_NAME && mv openssl-* ${BUILD_PRG}
     fi
 
     cd ${BUILD_PRG}
 
-    ./config shared no-idea no-mdc2 no-rc5 no-ec2m no-ecdh no-ecdsa
+    if [[ ! -z "$PREFIX" ]]; then
+        OPENSSL_PREFIX="--prefix=$PREFIX --openssldir=$PREFIX"
+    fi
 
-    ${MAKE} && sudo make install
+    ./config $OPENSSL_PREFIX shared no-idea no-mdc2 no-rc5 no-ec2m no-ecdh no-ecdsa && ${MAKE} || exit 1
+
+    if [[ ! -z "$PREFIX" && -w "$PREFIX" ]]; then
+        make install || exit 1
+    else
+        sudo make install || exit 1
+    fi
+
+    echo $PREFIX > ${WORKDIR}/$OPENSSL_PACKAGE_NAME.prefix
 }
 
 install_ffmpeg()
 {
+    FFMPEG_PACKAGE_NAME=ffmpeg-3.4.2
+    if check_cached_build $FFMPEG_PACKAGE_NAME; then
+        return 0
+    fi
+
     BUILD_PRG="FFMPEG"
 
     cd ${WORKDIR}
@@ -130,7 +258,12 @@ install_ffmpeg()
 
     cd ${BUILD_PRG}
 
+    if [[ ! -z "$PREFIX" ]]; then
+        FFMPEG_PREFIX="--prefix=$PREFIX"
+    fi
+
     ./configure \
+        $FFMPEG_PREFIX \
         --disable-static --enable-shared \
         --extra-libs=-ldl \
         --enable-ffprobe \
@@ -139,9 +272,15 @@ install_ffmpeg()
         --enable-zlib --enable-libopus --enable-libvpx --enable-libfdk_aac \
         --enable-encoder=libvpx_vp8,libvpx_vp9,libopus,libfdk_aac \
         --disable-decoder=tiff \
-        --enable-filter=asetnsamples,aresample,aformat,channelmap,channelsplit,scale,transpose,fps,settb,asettb
+        --enable-filter=asetnsamples,aresample,aformat,channelmap,channelsplit,scale,transpose,fps,settb,asettb && ${MAKE} || exit 1
 
-    ${MAKE} && sudo make install
+    if [[ ! -z "$PREFIX" && -w "$PREFIX" ]]; then
+        make install || exit 1
+    else
+        sudo make install || exit 1
+    fi
+
+    echo $PREFIX > ${WORKDIR}/$FFMPEG_PACKAGE_NAME.prefix
 }
 
 install_libopenh264()
@@ -150,15 +289,40 @@ install_libopenh264()
 
     cd ${WORKDIR}
 
-    curl -OLf http://ciscobinary.openh264.org/libopenh264-1.8.0-linux64.4.so.bz2  || fail_exit ${BUILD_PRG}
 
-    bzip2 -d libopenh264-1.8.0-linux64.4.so.bz2
+    if [ "x${OSNAME}" == "xMac OS X" ]; then
+        LIBRARY_EXTENSION=dylib
+        OPENH264_BINARY_NAME="libopenh264-1.8.0-osx64.4.dylib"
+    else
+        LIBRARY_EXTENSION=so
+        OPENH264_BINARY_NAME="libopenh264-1.8.0-linux64.4.so"
+    fi
 
-    sudo mv libopenh264-1.8.0-linux64.4.so /usr/lib
+    OPENH264_PACKAGE_NAME="${OPENH264_BINARY_NAME}.bz2"
 
-    sudo ln -sf /usr/lib/libopenh264-1.8.0-linux64.4.so /usr/lib/libopenh264.so
+    curl -OLf http://ciscobinary.openh264.org/${OPENH264_PACKAGE_NAME}  || fail_exit ${BUILD_PRG}
 
-    sudo ln -sf /usr/lib/libopenh264-1.8.0-linux64.4.so /usr/lib/libopenh264.so.4
+    bzip2 -d ${OPENH264_PACKAGE_NAME}
+
+    if [[ ! -z "$PREFIX" ]]; then
+        DESTINATION="${PREFIX}/lib"
+    else
+        DESTINATION=/usr/lib
+    fi
+
+    if [[ -w "$DESTINATION" ]]; then
+        mv ${OPENH264_BINARY_NAME} ${DESTINATION} \
+        && chmod a+x ${DESTINATION}/${OPENH264_BINARY_NAME} \
+        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.${LIBRARY_EXTENSION} \
+        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.4.${LIBRARY_EXTENSION} \
+        || exit 1
+    else
+        sudo mv ${OPENH264_BINARY_NAME} ${DESTINATION} \
+        && chmod a+x ${DESTINATION}/${OPENH264_BINARY_NAME} \
+        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.${LIBRARY_EXTENSION} \
+        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.4.${LIBRARY_EXTENSION} \
+        || exit 1
+    fi
 }
 
 install_base_ubuntu()
@@ -192,6 +356,19 @@ install_base_centos()
 
     export PKG_CONFIG_PATH=\${PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig
     export LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64
+}
+
+install_base_macos()
+{
+    BREW_PATH=$(which brew)
+    if [ ! -x "$BREW_PATH" ] ; then
+        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || exit 1
+    fi
+
+    brew install pkg-config nasm automake libtool xz cmake
+
+    export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
+    export PATH=/usr/local/bin:$PATH
 }
 
 fail_exit()
@@ -283,6 +460,31 @@ elif  [ "x${OSNAME}" == "xFedora" ]; then
     install_libsrt
 
     sudo ldconfig
+elif  [ "x${OSNAME}" == "xMac OS X" ]; then
+
+    PREFIX=$WORKDIR/prerequisites
+
+    mkdir -p $PREFIX
+
+    install_base_macos
+
+    check_version
+
+    install_openssl
+
+    install_libvpx
+
+    install_libopus
+
+    install_libsrtp
+
+    install_fdk_aac
+
+    install_ffmpeg
+
+    install_libsrt
+
+    install_libopenh264
 else
     echo "This program [$0] does not support your operating system [${OSNAME}]"
     echo "Please refer to manual installation page"

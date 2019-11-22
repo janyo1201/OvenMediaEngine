@@ -31,7 +31,11 @@ CONFIG_C_HEADER_EXTENSION := .h
 CONFIG_CXX_EXTENSION := .cpp
 CONFIG_CXX_HEADER_EXTENSION := .h
 
+ifneq ($(OS_VERSION), darwin)
 CONFIG_CORE_COUNT := $(shell cat /proc/cpuinfo | grep processor | wc -l)
+else
+CONFIG_CORE_COUNT := $(shell sysctl -n hw.ncpu)
+endif
 
 CONFIG_TARGET_COLOR := $(ANSI_GREEN)
 CONFIG_TARGET_FILE_COLOR := $(ANSI_BLUE)

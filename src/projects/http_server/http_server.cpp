@@ -301,6 +301,7 @@ bool HttpServer::Disconnect(ClientIterator iterator)
 			{
 				client = client_iterator->second;
 				_client_list.erase(client_iterator);
+				break;
 			}
 		}
 	}
