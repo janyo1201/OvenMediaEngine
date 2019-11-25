@@ -433,7 +433,7 @@ std::shared_ptr<ov::Error> RtcSignallingServer::DispatchCommand(const ov::String
 		if (clock_gettime(CLOCK_REALTIME, &current_time) == 0)
 		{
 			ov::JsonObject response_json;
-			long adjusted_nsec = current_time.tv_nsec + _server_time_offset * 1000 * 1000;
+			int64_t adjusted_nsec = current_time.tv_nsec + static_cast<int64_t>(_server_time_offset) * 1000 * 1000;
 			if (adjusted_nsec >= nanoseconds_in_second)
 			{
 				current_time.tv_sec += adjusted_nsec / nanoseconds_in_second;
