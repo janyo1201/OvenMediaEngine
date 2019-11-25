@@ -588,13 +588,20 @@ void RtmpChunkStream::ReceiveAmfDataMessage(std::shared_ptr<ImportMessage> &mess
 	}
 
 	// 처리
-	const bool is_meta_data_message = ((message_name == RTMP_CMD_DATA_SETDATAFRAME && data_name == RTMP_CMD_DATA_ONMETADATA) || (message_name == RTMP_CMD_DATA_ONMETADATA));
-	if(is_meta_data_message &&
+	if(message_name == RTMP_CMD_DATA_SETDATAFRAME &&
+	   data_name == RTMP_CMD_DATA_ONMETADATA &&
 	   document.GetProperty(2) != nullptr &&
 	   (document.GetProperty(2)->GetType() == AmfDataType::Object ||
 	    document.GetProperty(2)->GetType() == AmfDataType::Array))
 	{
 		OnAmfMetaData(message->message_header, document, 2);
+	}
+	else if(message_name == RTMP_CMD_DATA_ONMETADATA &&
+		document.GetProperty(1) != nullptr &&
+	   	(document.GetProperty(1)->GetType() == AmfDataType::Object ||
+	     document.GetProperty(1)->GetType() == AmfDataType::Array))
+	{
+		OnAmfMetaData(message->message_header, document, 1);
 	}
 	else
 	{
