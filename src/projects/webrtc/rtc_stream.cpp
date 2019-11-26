@@ -35,7 +35,7 @@ bool RtcStream::Start(uint32_t worker_count)
 {
 	// OFFER SDP 생성
 	_offer_sdp = std::make_shared<SessionDescription>();
-	_offer_sdp->SetOrigin("OvenMediaEngine", ov::Random::GenerateUInt32(), 2, "IN", 4, "127.0.0.1");
+	_offer_sdp->SetOrigin("Engine", ov::Random::GenerateUInt32(), 2, "IN", 4, "127.0.0.1");
 	_offer_sdp->SetTiming(0, 0);
 	_offer_sdp->SetIceOption("trickle");
 	_offer_sdp->SetIceUfrag(ov::Random::GenerateString(8));

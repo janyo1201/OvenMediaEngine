@@ -110,7 +110,7 @@ private:
 	uint8_t _version = 0;
 
 	// origin
-	ov::String _user_name = "OvenMediaEngine";
+	ov::String _user_name = "Engine";
 	uint32_t _session_id = ov::Random::GenerateUInt32();
 	uint32_t _session_version = 2;
 	ov::String _net_type = "IN";

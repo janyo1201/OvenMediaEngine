@@ -24,7 +24,7 @@ HttpClient::HttpClient(std::shared_ptr<ov::ClientSocket> socket, const std::shar
 	if(_response != nullptr)
 	{
 		// Set default headers
-		_response->SetHeader("Server", "OvenMediaEngine");
+		_response->SetHeader("Server", "Engine");
 		_response->SetHeader("Content-Type", "text/html");
 	}
 }
