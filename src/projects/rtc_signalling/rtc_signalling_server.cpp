@@ -436,10 +436,10 @@ std::shared_ptr<ov::Error> RtcSignallingServer::DispatchCommand(const ov::String
 			int64_t adjusted_nsec = static_cast<int64_t>(current_time.tv_sec) * nanoseconds_in_second + current_time.tv_nsec + static_cast<int64_t>(_server_time_offset) * 1000 * 1000;
 			Json::Value &value = response_json.GetJsonValue();
 			value["command"] = command.CStr();
-			const auto adjusted_seconds = adjusted_nsec / (1000 * 1000);
-			value["value"] = adjusted_seconds;
+			const auto adjusted_msec = adjusted_nsec / (1000 * 1000);
+			value["value"] = adjusted_msec;
 			value["status"] = 200;
-			time_t current_time_seconds = adjusted_seconds;
+			time_t current_time_seconds = adjusted_msec / 1000;
 			std::tm time;
 			gmtime_r(&current_time_seconds, &time);
 			// dd-mm-yyyy + null terminator
