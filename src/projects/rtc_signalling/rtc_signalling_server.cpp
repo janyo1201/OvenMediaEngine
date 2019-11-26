@@ -444,6 +444,10 @@ std::shared_ptr<ov::Error> RtcSignallingServer::DispatchCommand(const ov::String
 				current_time.tv_sec += adjusted_nsec / nanoseconds_in_second;
 				current_time.tv_nsec = nanoseconds_in_second - adjusted_nsec % nanoseconds_in_second;
 			}
+			else
+			{
+				current_time.tv_nsec = adjusted_nsec;
+			}
 			Json::Value &value = response_json.GetJsonValue();
 			value["command"] = command.CStr();
 			value["value"] = static_cast<uint64_t>(current_time.tv_sec) * 1000 + current_time.tv_nsec / (1000 * 1000);
