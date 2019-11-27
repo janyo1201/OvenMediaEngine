@@ -318,9 +318,9 @@ install_libopenh264()
         || exit 1
     else
         sudo mv ${OPENH264_BINARY_NAME} ${DESTINATION} \
-        && chmod a+x ${DESTINATION}/${OPENH264_BINARY_NAME} \
-        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.${LIBRARY_EXTENSION} \
-        && ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.4.${LIBRARY_EXTENSION} \
+        && sudo chmod a+x ${DESTINATION}/${OPENH264_BINARY_NAME} \
+        && sudo ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.${LIBRARY_EXTENSION} \
+        && sudo ln -sf ${DESTINATION}/${OPENH264_BINARY_NAME} ${DESTINATION}/libopenh264.4.${LIBRARY_EXTENSION} \
         || exit 1
     fi
 }
@@ -404,6 +404,10 @@ Do you want to continue [y/N] ? " ANS
 }
 
 mkdir -p ${WORKDIR}
+
+if [[ ! -z ${PREFIX} && ! -d ${PREFIX} ]]; then
+    mkdir -p ${PREFIX}
+fi
 
 if [ "x${OSNAME}" == "xUbuntu" ]; then
 

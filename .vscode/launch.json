@@ -18,6 +18,14 @@
             "preLaunchTask": "make debug (macOS)"
         },
         {
+            "name": "launch debug OvenMediaEngine (Linux)",
+            "type": "gdb",
+            "request": "launch",
+            "target": "${workspaceFolder}/src/bin/DEBUG/OvenMediaEngine",
+            "cwd": "${workspaceFolder}/src/bin/DEBUG",
+            "preLaunchTask": "make debug (Linux)"
+        },
+        {
             "name": "launch release OvenMediaEngine (macOS)",
             "type": "lldb",
             "request": "launch",

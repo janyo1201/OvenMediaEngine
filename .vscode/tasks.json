@@ -4,6 +4,20 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "make debug (Linux)",
+            "type": "shell",
+            "command": "make -f Makefile",
+            "options": {
+                "cwd": "${workspaceFolder}/src",
+                "env": {
+                    "PKG_CONFIG_PATH": "${workspaceFolder}/build/prerequisites/lib/pkgconfig:$PKG_CONFIG_PATH",
+                    "PREFIX": "${workspaceFolder}/build/prerequisites/lib"
+                }
+            },
+            "group": "build",
+            "problemMatcher":"$gcc"
+        },
+        {
             "label": "make debug (macOS)",
             "type": "shell",
             "command": "make -f Makefile && ${workspaceFolder}/misc/macos_fix_dylib_paths.sh ${workspaceFolder}/src/bin/DEBUG/OvenMediaEngine",
@@ -39,6 +53,7 @@
             "command": "${workspaceFolder}/misc/prerequisites.sh",
             "options": {
                 "env": {
+                    "PREFIX": "${workspaceFolder}/build/prerequisites",
                     "WORKDIR":  "${workspaceFolder}/build",
                     "CACHED_BUILD": "1"
                 }
