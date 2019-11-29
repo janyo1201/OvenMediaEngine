@@ -131,7 +131,6 @@ TranscodeStream::TranscodeStream(const info::Application *application_info, std:
 			auto width = video_profile->GetWidth(), height = video_profile->GetHeight();
 			if (width == -1 || height == -1)
 			{
-				const auto& input_tracks = _stream_info_input->GetTracks();
 				auto video_track = _stream_info_input->FindFirstTrack(common::MediaType::Video);
 				if (video_track)
 				{
@@ -142,14 +141,14 @@ TranscodeStream::TranscodeStream(const info::Application *application_info, std:
 					if (height == -1)
 					{
 						height = video_track->GetHeight();
-				}
+					}
 				}
 			}
 			if (video_profile->GetBypass())
-				{
+			{
 				auto video_track = _stream_info_input->FindFirstTrack(common::MediaType::Video);
 				if (video_track)
-					{
+				{
 					uint8_t track_id = GetTrackId(common::MediaType::Video);
 					if (track_id)
 					{
