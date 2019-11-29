@@ -1052,14 +1052,18 @@ bool RtmpChunkStream::ReceiveVideoMessage(std::shared_ptr<ImportMessage> &messag
 		return false;
 	}
 
+	std::unique_ptr<FragmentationHeader> fragmentation_header;
+
 	// Frame Type 확인 (I/P(B) Frame)
 	if(message->body->at(RTMP_VIDEO_CONTROL_HEADER_INDEX) == RTMP_H264_I_FRAME_TYPE)
 	{
 		frame_type = RtmpFrameType::VideoIFrame; //I-Frame
+		fragmentation_header = std::move(_avc_video_packet_fragmentizer.FromAvcVideoPacket(message->body->data(), message->body->size()));
 	}
 	else if(message->body->at(RTMP_VIDEO_CONTROL_HEADER_INDEX) == RTMP_H264_P_FRAME_TYPE)
 	{
 		frame_type = RtmpFrameType::VideoPFrame; //P-Frame
+		fragmentation_header = std::move(_avc_video_packet_fragmentizer.FromAvcVideoPacket(message->body->data(), message->body->size()));
 	}
 	else
 	{
@@ -1123,7 +1127,8 @@ bool RtmpChunkStream::ReceiveVideoMessage(std::shared_ptr<ImportMessage> &messag
 		                                          _stream_id,
 		                                          message->message_header->timestamp,
 		                                          frame_type,
-		                                          message->body);
+		                                          message->body,
+												  std::move(fragmentation_header));
 
 
 		if(frame_type == RtmpFrameType::VideoIFrame)

@@ -67,4 +67,6 @@ public:
 
 	// 마지막 프레임(패킷) 시간
 	int64_t _last_frame_time;
+
+	bool _bypass = false;
 };

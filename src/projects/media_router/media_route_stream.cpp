@@ -45,7 +45,7 @@ MediaRouteApplicationConnector::ConnectorType MediaRouteStream::GetConnectorType
 	return _application_connector_type;
 }
 
-bool MediaRouteStream::Push(std::unique_ptr<MediaPacket> buffer, bool convert_bitstream)
+bool MediaRouteStream::Push(std::unique_ptr<MediaPacket> buffer)
 {
 	MediaType media_type = buffer->GetMediaType();
 	int32_t track_id = buffer->GetTrackId();
@@ -55,38 +55,6 @@ bool MediaRouteStream::Push(std::unique_ptr<MediaPacket> buffer, bool convert_bi
 	{
 		logte("Cannot find media track. type(%s), id(%d)", (media_type == MediaType::Video) ? "video" : "audio", track_id);
 		return false;
-	}
-
-	if(convert_bitstream)
-	{
-		if(media_type == MediaType::Video && media_track->GetCodecId() == MediaCodecId::H264)
-		{
-		    int64_t cts = 0;
-
-		    _bsfv.convert_to(buffer->GetData(), cts);
-            buffer->SetCts(cts);
-
-            // logtd("rtmp input h264 pts(%lld) cts(%lld)", buffer->GetPts(), buffer->GetCts());
-		}
-		else if(media_type == MediaType::Video && media_track->GetCodecId() == MediaCodecId::Vp8)
-		{
-			_bsf_vp8.convert_to(buffer->GetData());
-		}
-		else if(media_type == MediaType::Audio && media_track->GetCodecId() == MediaCodecId::Aac)
-		{
-			_bsfa.convert_to(buffer->GetData());
-			logtp("Enqueue for AAC\n%s", buffer->GetData()->Dump(32).CStr());
-		}
-		else if(media_type == MediaType::Audio && media_track->GetCodecId() == MediaCodecId::Opus)
-		{
-			// logtw("%s", buffer->GetData()->Dump(32).CStr());
-			// _bsfa.convert_to(buffer.GetBuffer());
-			logtp("Enqueue for OPUS\n%s", buffer->GetData()->Dump(32).CStr());
-		}
-		else
-		{
-			OV_ASSERT2(false);
-		}
 	}
 
 #if 0

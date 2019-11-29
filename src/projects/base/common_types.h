@@ -41,6 +41,7 @@ public:
 	uint16_t fragmentation_time_diff[MAX_FRAG_COUNT] {};
 	// Payload type of each fragmentation
 	uint8_t fragmentation_pl_type[MAX_FRAG_COUNT] {};
+	bool last_fragment_complete = false;
 
 	void VerifyAndAllocateFragmentationHeader(const size_t size) {
 		const auto size16 = static_cast<uint16_t>(size);

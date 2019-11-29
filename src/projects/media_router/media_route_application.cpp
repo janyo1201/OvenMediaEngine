@@ -352,9 +352,7 @@ bool MediaRouteApplication::OnReceiveBuffer(
 		return false;
 	}
 
-	bool convert_bitstream = app_conn->GetConnectorType() != MediaRouteApplicationConnector::ConnectorType::Relay;
-
-	bool ret = stream->Push(std::move(packet), convert_bitstream);
+	bool ret = stream->Push(std::move(packet));
 
 	// TODO(SOULK) : Connector(Provider, Transcoder)에서 수신된 데이터에 대한 정보를 바로 처리하기 위해 버퍼의 Indicator 정보를
 	// MainTask에 전달한다. 패킷이 수신되어 처리(재분배)되는 속도가 0.001초 이하의 초저지연으로 동작하나, 효율적인 구조는 
@@ -505,6 +503,13 @@ void MediaRouteApplication::MainTask()
 						cur_buf->GetFlags(),
 						cur_buf->GetCts()
 					);
+
+					if (cur_buf->_frag_hdr)
+					{
+						auto frag_hdr = std::make_unique<FragmentationHeader>();
+						::memcpy(frag_hdr.get(), cur_buf->_frag_hdr.get(), sizeof(FragmentationHeader));
+						media_buffer_clone->_frag_hdr = std::move(frag_hdr);
+					}
 
 					observer->OnSendFrame(
 						stream_info,

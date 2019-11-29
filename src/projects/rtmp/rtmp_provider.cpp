@@ -215,7 +215,8 @@ bool RtmpProvider::OnVideoData(info::application_id_t application_id,
                                uint32_t stream_id,
                                uint32_t timestamp,
                                RtmpFrameType frame_type,
-                               std::shared_ptr<std::vector<uint8_t>> &data)
+                               std::shared_ptr<std::vector<uint8_t>> &data,
+							   std::unique_ptr<FragmentationHeader> fragmentation_header)
 {
 	auto application = std::dynamic_pointer_cast<RtmpApplication>(GetApplicationById(application_id));
 
@@ -238,7 +239,7 @@ bool RtmpProvider::OnVideoData(info::application_id_t application_id,
 	                                          data->size(),
 	                                          timestamp,
 	                                          frame_type == RtmpFrameType::VideoIFrame ? MediaPacketFlag::Key : MediaPacketFlag::NoFlag);
-
+	pbuf->_frag_hdr = std::move(fragmentation_header);
 	application->SendFrame(stream, std::move(pbuf));
 
 	return true;
