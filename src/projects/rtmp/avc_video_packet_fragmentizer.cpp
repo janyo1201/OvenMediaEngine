@@ -138,6 +138,12 @@ std::unique_ptr<FragmentationHeader> AvcVideoPacketFragmentizer::FromAvcVideoPac
         if (fragments.size() > MAX_FRAG_COUNT)
         {
             logte("Received and RTMP packet with %zu fragments which is more than the maximum fragment count %d", fragments.size(), MAX_FRAG_COUNT);
+            size_t fragment_index = 1;
+            for (const auto &fragment : fragments)
+            {
+                logte("Fragment %zu: %d", fragment_index, static_cast<int32_t>(packet[fragment.first] & 0x1f));
+                ++fragment_index;
+            }
             return nullptr;
         }
         fragmentation_header = std::make_unique<FragmentationHeader>();
