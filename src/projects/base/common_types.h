@@ -13,7 +13,7 @@
 
 #include "media_route/media_type.h"
 
-#define MAX_FRAG_COUNT 32
+#define MAX_FRAG_COUNT 3
 
 enum class FrameType : int8_t
 {
