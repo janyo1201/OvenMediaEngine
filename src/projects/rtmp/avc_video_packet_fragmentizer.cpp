@@ -2,6 +2,8 @@
 
 // https://www.adobe.com/content/dam/acom/en/devnet/flv/video_file_format_spec_v10.pdf
 
+#define OV_LOG_TAG "avcvideopacketfragmentizer"
+
 constexpr size_t avc_video_packet_payload_offset = 5;
 constexpr size_t avc_decoder_configuration_nal_length_offset = 4;
 constexpr size_t avc_decoder_configuration_sps_count_offset = 5;
@@ -133,6 +135,11 @@ std::unique_ptr<FragmentationHeader> AvcVideoPacketFragmentizer::FromAvcVideoPac
     }
     if (fragments.empty() == false)
     {
+        if (fragments.size() > MAX_FRAG_COUNT)
+        {
+            logte("Received and RTMP packet with %zu fragments which is more than the maximum fragment count %d", fragments.size(), MAX_FRAG_COUNT);
+            return nullptr;
+        }
         fragmentation_header = std::make_unique<FragmentationHeader>();
         fragmentation_header->VerifyAndAllocateFragmentationHeader(fragments.size());
         for (size_t fragment_index = 0; fragment_index < fragments.size(); ++fragment_index)
