@@ -60,7 +60,7 @@ size_t RtpPacketizerH264::SetPayloadData(
 	const uint8_t* payload_data,
 	size_t payload_size,
 	const FragmentationHeader* fragmentation) {
-	for (int i = 0; i < fragmentation->fragmentation_vector_size; ++i) {
+	for (int i = 0; i < fragmentation->fragmentation_offset.size(); ++i) {
 		const uint8_t* buffer =
 			&payload_data[fragmentation->fragmentation_offset[i]];
 		size_t length = fragmentation->fragmentation_length[i];
@@ -70,7 +70,7 @@ size_t RtpPacketizerH264::SetPayloadData(
 		{
 			complete = last_fragment_complete_;
 		}
-		if (i == fragmentation->fragmentation_vector_size - 1)
+		if (i == fragmentation->fragmentation_offset.size())
 		{
 			complete = fragmentation->last_fragment_complete;
 		}

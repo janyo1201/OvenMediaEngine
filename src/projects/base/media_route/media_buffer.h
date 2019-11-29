@@ -104,7 +104,10 @@ public:
 			GetFlags(),
             GetCts()
 		);
-		::memcpy(packet->_frag_hdr.get(), _frag_hdr.get(), sizeof(FragmentationHeader));
+		if (_frag_hdr)
+		{
+			packet->_frag_hdr = std::make_unique<FragmentationHeader>(*_frag_hdr);
+		}
 		return packet;
 	}
 

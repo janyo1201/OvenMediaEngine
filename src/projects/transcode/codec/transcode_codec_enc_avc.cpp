@@ -142,14 +142,6 @@ std::unique_ptr<MediaPacket> OvenCodecImplAvcodecEncAVC::RecvBuffer(TranscodeRes
 		auto encoded = std::make_unique<uint8_t[]>(required_size);
 		auto frag_hdr = std::make_unique<FragmentationHeader>();
 
-		if(fragments_count > MAX_FRAG_COUNT)
-		{
-			logte("Unexpected H264 fragments_count=%d", fragments_count);
-			*result = TranscodeResult::DataError;
-			return nullptr;
-		}
-
-		frag_hdr->VerifyAndAllocateFragmentationHeader(fragments_count);
 		size_t frag = 0;
 		size_t encoded_length = 0;
 		for(int layer = 0; layer < fbi.iLayerNum; ++layer)
@@ -158,10 +150,10 @@ std::unique_ptr<MediaPacket> OvenCodecImplAvcodecEncAVC::RecvBuffer(TranscodeRes
 			size_t layer_len = 0;
 			for(int nal = 0; nal < layerInfo.iNalCount; ++nal, ++frag)
 			{
-				frag_hdr->fragmentation_offset[frag] =
-					encoded_length + layer_len + sizeof(start_code);
-				frag_hdr->fragmentation_length[frag] =
-					layerInfo.pNalLengthInByte[nal] - sizeof(start_code);
+				frag_hdr->fragmentation_offset.emplace_back(
+					encoded_length + layer_len + sizeof(start_code));
+				frag_hdr->fragmentation_length.emplace_back(
+					layerInfo.pNalLengthInByte[nal] - sizeof(start_code));
 				layer_len += layerInfo.pNalLengthInByte[nal];
 			}
 			::memcpy(encoded.get() + encoded_length, layerInfo.pBsBuf, layer_len);

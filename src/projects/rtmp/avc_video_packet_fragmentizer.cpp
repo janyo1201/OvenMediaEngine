@@ -81,7 +81,7 @@ std::unique_ptr<FragmentationHeader> AvcVideoPacketFragmentizer::FromAvcVideoPac
                 const uint8_t sps_count = (*(avc_packet_payload + avc_decoder_configuration_sps_count_offset)) & 0b11111;
                 base_offset += avc_decoder_configuration_sps_count_offset;
                 avc_packet_payload += avc_decoder_configuration_sps_count_offset + 1;
-                size_t continuation_length;
+                size_t continuation_length = 0;
                 if (sps_count)
                 {
                     const auto *result = ParseNalUnits(avc_packet_payload, length - base_offset, 2, fragments, base_offset, continuation_length, sps_count);
@@ -90,11 +90,12 @@ std::unique_ptr<FragmentationHeader> AvcVideoPacketFragmentizer::FromAvcVideoPac
                         OV_ASSERT2(false);
                         return nullptr;
                     }
-                    base_offset += avc_packet_payload - result;
+                    base_offset += result - avc_packet_payload;
                     avc_packet_payload = result;
                 }
                 const uint8_t pps_count = *(avc_packet_payload);
                 base_offset += 1;
+                avc_packet_payload += 1;
                 if (pps_count)
                 {
                     if (ParseNalUnits(avc_packet_payload, length - base_offset, 2, fragments, base_offset, continuation_length, pps_count) == nullptr)
@@ -135,17 +136,11 @@ std::unique_ptr<FragmentationHeader> AvcVideoPacketFragmentizer::FromAvcVideoPac
     }
     if (fragments.empty() == false)
     {
-        if (fragments.size() > MAX_FRAG_COUNT)
-        {
-            logte("Received and RTMP packet with %zu fragments which is more than the maximum fragment count %d", fragments.size(), MAX_FRAG_COUNT);
-            return nullptr;
-        }
         fragmentation_header = std::make_unique<FragmentationHeader>();
-        fragmentation_header->VerifyAndAllocateFragmentationHeader(fragments.size());
         for (size_t fragment_index = 0; fragment_index < fragments.size(); ++fragment_index)
         {
-            fragmentation_header->fragmentation_offset[fragment_index] = fragments[fragment_index].first;
-            fragmentation_header->fragmentation_length[fragment_index] = fragments[fragment_index].second;
+            fragmentation_header->fragmentation_offset.emplace_back(fragments[fragment_index].first);
+            fragmentation_header->fragmentation_length.emplace_back(fragments[fragment_index].second);
         }
         fragmentation_header->last_fragment_complete = last_fragment_complete;
     }

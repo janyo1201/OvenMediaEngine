@@ -56,6 +56,7 @@ protected:
 		uint32_t track_id;
 		ov::Data data;
 		uint8_t flags;
+		bool had_first_packet = false; 
 	};
 
 	struct RelayStreamInfo
