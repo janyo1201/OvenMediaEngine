@@ -14,10 +14,12 @@ class RtcApplication : public Application
 public:
 	static std::shared_ptr<RtcApplication> Create(const info::Application *application_info,
 	                                              std::shared_ptr<IcePort> ice_port,
-	                                              std::shared_ptr<RtcSignallingServer> rtc_signalling);
+	                                              std::shared_ptr<RtcSignallingServer> rtc_signalling,
+												  bool fake_h264_sdp_entry);
 	RtcApplication(const info::Application *application_info,
 	               std::shared_ptr<IcePort> ice_port,
-	               std::shared_ptr<RtcSignallingServer> rtc_signalling);
+	               std::shared_ptr<RtcSignallingServer> rtc_signalling,
+				   bool fake_h264_sdp_entry);
 	~RtcApplication() final;
 
 	std::shared_ptr<Certificate> GetCertificate();
@@ -45,4 +47,5 @@ private:
 	std::shared_ptr<IcePort> _ice_port;
 	std::shared_ptr<RtcSignallingServer> _rtc_signalling;
 	std::shared_ptr<Certificate> _certificate;
+	const bool _fake_h264_sdp_entry;
 };

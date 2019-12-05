@@ -6,17 +6,20 @@
 
 std::shared_ptr<RtcApplication> RtcApplication::Create(const info::Application *application_info,
                                                        std::shared_ptr<IcePort> ice_port,
-                                                       std::shared_ptr<RtcSignallingServer> rtc_signalling)
+                                                       std::shared_ptr<RtcSignallingServer> rtc_signalling,
+													   bool fake_h264_sdp_entry)
 {
-	auto application = std::make_shared<RtcApplication>(application_info, ice_port, rtc_signalling);
+	auto application = std::make_shared<RtcApplication>(application_info, ice_port, rtc_signalling, fake_h264_sdp_entry);
 	application->Start();
 	return application;
 }
 
 RtcApplication::RtcApplication(const info::Application *application_info,
                                std::shared_ptr<IcePort> ice_port,
-                               std::shared_ptr<RtcSignallingServer> rtc_signalling)
-	: Application(application_info)
+                               std::shared_ptr<RtcSignallingServer> rtc_signalling,
+							   bool fake_h264_sdp_entry)
+	: Application(application_info),
+	  _fake_h264_sdp_entry(fake_h264_sdp_entry)
 {
 	_ice_port = ice_port;
 	_rtc_signalling = rtc_signalling;
@@ -42,7 +45,7 @@ std::shared_ptr<Stream> RtcApplication::CreateStream(std::shared_ptr<StreamInfo>
 		// RtcStream should have worker threads.
 		worker_count = MIN_STREAM_THREAD_COUNT;
 	}
-	return RtcStream::Create(GetSharedPtrAs<Application>(), *info, worker_count);
+	return RtcStream::Create(GetSharedPtrAs<Application>(), *info, worker_count, _fake_h264_sdp_entry);
 }
 
 bool RtcApplication::DeleteStream(std::shared_ptr<StreamInfo> info)

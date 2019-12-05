@@ -13,6 +13,7 @@
 #include "rtmp_provider.h"
 #include "rtmp_application.h"
 #include "rtmp_stream.h"
+#include "base/application/media_extradata.h"
 
 #define OV_LOG_TAG "RtmpProvider"
 
@@ -164,6 +165,11 @@ bool RtmpProvider::OnStreamReadyComplete(const ov::String &app_name,
 		new_track->SetHeight((uint32_t)media_info->video_height);
 		new_track->SetFrameRate(media_info->video_framerate);
 
+		if (media_info->avc_sps && media_info->avc_pps)
+		{
+			new_track->_codec_extradata = std::move(H264Extradata().AddSps(*media_info->avc_sps).AddPps(*media_info->avc_pps).Serialize());
+		}
+	
 		// RTMP는 1/1000 단위의 타임 베이스를 사용함
 		new_track->SetTimeBase(1, 1000);
 		stream->AddTrack(new_track);

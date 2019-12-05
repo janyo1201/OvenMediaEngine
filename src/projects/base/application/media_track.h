@@ -69,4 +69,6 @@ public:
 	int64_t _last_frame_time;
 
 	bool _bypass = false;
+
+	std::vector<uint8_t> _codec_extradata;
 };

@@ -44,6 +44,8 @@ bool WebRtcPublisher::Start()
 		return false;
 	}
 
+	_fake_h264_sdp_entry = webrtc_publisher->FakeH264SdpEntry();
+
 	auto webrtc = host->GetPorts().GetWebrtcPort();
 
 	_ice_port = IcePortManager::Instance()->CreatePort(webrtc.GetIceCandidates(), IcePortObserver::GetSharedPtr());
@@ -87,7 +89,7 @@ bool WebRtcPublisher::GetMonitoringCollectionData(std::vector<std::shared_ptr<Mo
 // Publisher에서 Application 생성 요청이 온다.
 std::shared_ptr<Application> WebRtcPublisher::OnCreateApplication(const info::Application *application_info)
 {
-	return RtcApplication::Create(application_info, _ice_port, _signalling);
+	return RtcApplication::Create(application_info, _ice_port, _signalling, _fake_h264_sdp_entry);
 }
 
 /*

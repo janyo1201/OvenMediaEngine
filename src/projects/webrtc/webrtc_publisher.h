@@ -67,4 +67,5 @@ private:
 
 	std::shared_ptr<IcePort> _ice_port;
 	std::shared_ptr<RtcSignallingServer> _signalling;
+	bool _fake_h264_sdp_entry = true;
 };

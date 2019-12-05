@@ -48,6 +48,7 @@ MediaTrack::MediaTrack(const MediaTrack &media_track)
 	_last_frame_time = 0;
 
 	_bypass = media_track._bypass;
+	_codec_extradata = media_track._codec_extradata;
 }
 
 MediaTrack::~MediaTrack()

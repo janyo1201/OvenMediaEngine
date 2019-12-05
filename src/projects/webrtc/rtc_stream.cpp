@@ -2,14 +2,16 @@
 #include "rtc_stream.h"
 #include "rtc_application.h"
 #include "rtc_session.h"
+#include "base/application/media_extradata.h"
 
 using namespace common;
 
 std::shared_ptr<RtcStream> RtcStream::Create(const std::shared_ptr<Application> application,
                                              const StreamInfo &info,
-                                             uint32_t worker_count)
+                                             uint32_t worker_count,
+											 bool fake_h264_sdp_entry)
 {
-	auto stream = std::make_shared<RtcStream>(application, info);
+	auto stream = std::make_shared<RtcStream>(application, info, fake_h264_sdp_entry);
 	if(!stream->Start(worker_count))
 	{
 		return nullptr;
@@ -18,8 +20,10 @@ std::shared_ptr<RtcStream> RtcStream::Create(const std::shared_ptr<Application> 
 }
 
 RtcStream::RtcStream(const std::shared_ptr<Application> application,
-                     const StreamInfo &info)
-	: Stream(application, info)
+                     const StreamInfo &info,
+					 bool fake_h264_sdp_entry)
+	: Stream(application, info),
+	  _fake_h264_sdp_entry(fake_h264_sdp_entry)
 {
 	_certificate = application->GetSharedPtrAs<RtcApplication>()->GetCertificate();
 	_vp8_picture_id = 0x8000; // 1 {000 0000 0000 0000} 1 is marker for 15 bit length
@@ -73,13 +77,35 @@ bool RtcStream::Start(uint32_t worker_count)
 						break;
 					case MediaCodecId::H264:
 						codec = "H264";
-
-						payload->SetFmtp(ov::String::FormatString(
-							// NonInterleaved => packetization-mode=1
-							// baseline & lvl 3.1 => profile-level-id=42e01f
-							"packetization-mode=1;profile-level-id=%x",
-							0x42e01f
-						));
+						
+						{
+							H264Extradata h264_extradata;
+							const auto &sps = h264_extradata.GetSps();
+							if ((_fake_h264_sdp_entry == false)
+								&& (track_item.second->_codec_extradata.empty() == false)
+								&& h264_extradata.Deserialize(track_item.second->_codec_extradata)
+								&& sps.empty() == false
+								&& sps.front().size() >= 4
+							)
+							{
+								const auto &first_sps = sps.front();
+								payload->SetFmtp(ov::String::FormatString(
+									// NonInterleaved => packetization-mode=1
+									// baseline & lvl 3.1 => profile-level-id=42e01f
+									"packetization-mode=1;profile-level-id=%02x%02x%02x",
+									first_sps[1], first_sps[2], first_sps[3]
+								));
+							}
+							else
+							{
+								payload->SetFmtp(ov::String::FormatString(
+									// NonInterleaved => packetization-mode=1
+									// baseline & lvl 3.1 => profile-level-id=42e01f
+									"packetization-mode=1;profile-level-id=%x",
+									0x42e01f
+								));
+							}
+						}
 
 						break;
 					default:
