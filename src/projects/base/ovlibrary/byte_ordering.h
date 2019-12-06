@@ -27,6 +27,7 @@
 #define be64toh(x) OSSwapBigToHostConstInt64(x)
 #else
 #include <endian.h>
+#include <arpa/inet.h>
 #endif
 
 #if (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)

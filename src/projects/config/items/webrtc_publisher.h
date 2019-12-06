@@ -31,11 +31,6 @@ namespace cfg
 			return _server_time_offset;
 		}
 
-		bool FakeH264SdpEntry() const
-		{
-			return _fake_h264_sdp_entry;
-		} 
-
 	protected:
 		void MakeParseList() const override
 		{
@@ -44,12 +39,10 @@ namespace cfg
 			RegisterValue<Optional>("Timeout", &_timeout);
 			RegisterValue<Optional>("P2P", &_p2p);
 			RegisterValue<Optional>("ServerTimeOffset", &_server_time_offset);
-			RegisterValue<Optional>("FakeH264SdpEntry", &_fake_h264_sdp_entry);
 		}
 
 		int _timeout = 0;
 		P2P _p2p;
 		int _server_time_offset = 0;
-		bool _fake_h264_sdp_entry = true;
 	};
 }

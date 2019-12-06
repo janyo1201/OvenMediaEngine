@@ -16,11 +16,9 @@ class RtcStream : public Stream, public RtpRtcpPacketizerInterface
 public:
 	static std::shared_ptr<RtcStream> Create(const std::shared_ptr<Application> application,
 	                                         const StreamInfo &info,
-	                                         uint32_t worker_count,
-											 bool fake_h264_sdp_entry);
+	                                         uint32_t worker_count);
 	explicit RtcStream(const std::shared_ptr<Application> application,
-	                   const StreamInfo &info,
-					   const bool fake_h264_sdp_entry);
+	                   const StreamInfo &info);
 	~RtcStream() final;
 
 	// SDP를 생성하고 관리한다.
@@ -60,6 +58,4 @@ private:
 
 	// Packetizing을 위해 RtpSender를 이용한다.
 	std::map<uint8_t, std::shared_ptr<RtpPacketizer>> _packetizers;
-
-	const bool _fake_h264_sdp_entry;
 };

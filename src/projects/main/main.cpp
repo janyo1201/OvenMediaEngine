@@ -20,6 +20,7 @@
 #include <base/ovcrypto/ovcrypto.h>
 #include <base/ovlibrary/stack_trace.h>
 #include <base/ovlibrary/log_write.h>
+#include <rtsp/rtsp_provider.h>
 
 void SrtLogHandler(void *opaque, int level, const char *file, int line, const char *area, const char *message);
 
@@ -155,6 +156,12 @@ int main(int argc, char *argv[])
 				{
 					logti("Trying to create RTMP Provider for application [%s/%s]...", host_name.CStr(), app_name.CStr());
 					providers.push_back(RtmpProvider::Create(&application_info, router));
+				}
+
+				if (application_info.GetProvider<cfg::RtspProvider>() && application_info.GetType() == cfg::ApplicationType::Live)
+				{
+					logti("Trying to create RTSP Provider for application [%s/%s]...", host_name.CStr(), app_name.CStr());
+					providers.push_back(RtspProvider::Create(&application_info, router));
 				}
 
 				if(application_info.GetWebConsole().IsParsed())

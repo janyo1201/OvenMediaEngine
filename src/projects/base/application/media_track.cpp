@@ -71,7 +71,7 @@ void MediaTrack::SetMediaType(MediaType type)
 	_media_type = type;
 }
 
-MediaType MediaTrack::GetMediaType()
+MediaType MediaTrack::GetMediaType() const
 {
 	return _media_type;
 }
@@ -81,7 +81,7 @@ void MediaTrack::SetCodecId(MediaCodecId id)
 	_codec_id = id;
 }
 
-MediaCodecId MediaTrack::GetCodecId()
+MediaCodecId MediaTrack::GetCodecId() const
 {
 	return _codec_id;
 }
@@ -124,4 +124,14 @@ void MediaTrack::SetLastFrameTime(int64_t time)
 int64_t MediaTrack::GetLastFrameTime()
 {
 	return _last_frame_time;
+}
+
+void MediaTrack::SetCodecExtradata(std::vector<uint8_t> codec_extradata)
+{
+	_codec_extradata = std::move(codec_extradata);
+}
+
+const std::vector<uint8_t> &MediaTrack::GetCodecExtradata() const
+{
+	return _codec_extradata;
 }

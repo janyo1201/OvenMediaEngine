@@ -28,11 +28,11 @@ public:
 public:
 	// 비디오 오디오 설정
 	void SetMediaType(common::MediaType type);
-	common::MediaType GetMediaType();
+	common::MediaType GetMediaType() const;
 
 	// 코덱 설정
 	void SetCodecId(common::MediaCodecId id);
-	common::MediaCodecId GetCodecId();
+	common::MediaCodecId GetCodecId() const;
 
 	// 타임베이스 설정
 	common::Timebase &GetTimeBase();
@@ -47,6 +47,9 @@ public:
 
 	void SetLastFrameTime(int64_t time);
 	int64_t GetLastFrameTime();
+
+	void SetCodecExtradata(std::vector<uint8_t> codec_extradata);
+	const std::vector<uint8_t> &GetCodecExtradata() const;
 
 // private:
 

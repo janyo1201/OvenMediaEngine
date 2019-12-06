@@ -9,7 +9,7 @@
 class H264Extradata
 {
 public:
-    std::vector<uint8_t> Serialize()
+    std::vector<uint8_t> Serialize() const
     {
         size_t total_size = 2 * sizeof(size_t);
         {
@@ -47,9 +47,10 @@ public:
         return *this;
     }
 
-    bool Deserialize(std::vector<uint8_t> &extradata)
+    bool Deserialize(const std::vector<uint8_t> &extradata)
     {
-        MemoryView memory_view(extradata.data(), extradata.size(), extradata.size());
+        // As long as there is no writing to the memory view here, const_cast is safe
+        MemoryView memory_view(const_cast<uint8_t*>(extradata.data()), extradata.size(), extradata.size());
         memory_view >> sps_ >> pps_;
         const bool result = memory_view.good() && memory_view.eof();
         OV_ASSERT2(result);
@@ -61,6 +62,10 @@ public:
         return sps_;
     }
 
+    const std::vector<std::vector<uint8_t>> &GetPps() const
+    {
+        return pps_;
+    }
 private:
     std::vector<std::vector<uint8_t>> sps_;
     std::vector<std::vector<uint8_t>> pps_;

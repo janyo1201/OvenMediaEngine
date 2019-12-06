@@ -8,10 +8,9 @@ using namespace common;
 
 std::shared_ptr<RtcStream> RtcStream::Create(const std::shared_ptr<Application> application,
                                              const StreamInfo &info,
-                                             uint32_t worker_count,
-											 bool fake_h264_sdp_entry)
+                                             uint32_t worker_count)
 {
-	auto stream = std::make_shared<RtcStream>(application, info, fake_h264_sdp_entry);
+	auto stream = std::make_shared<RtcStream>(application, info);
 	if(!stream->Start(worker_count))
 	{
 		return nullptr;
@@ -20,10 +19,8 @@ std::shared_ptr<RtcStream> RtcStream::Create(const std::shared_ptr<Application> 
 }
 
 RtcStream::RtcStream(const std::shared_ptr<Application> application,
-                     const StreamInfo &info,
-					 bool fake_h264_sdp_entry)
-	: Stream(application, info),
-	  _fake_h264_sdp_entry(fake_h264_sdp_entry)
+                     const StreamInfo &info)
+	: Stream(application, info)
 {
 	_certificate = application->GetSharedPtrAs<RtcApplication>()->GetCertificate();
 	_vp8_picture_id = 0x8000; // 1 {000 0000 0000 0000} 1 is marker for 15 bit length
@@ -56,9 +53,6 @@ bool RtcStream::Start(uint32_t worker_count)
 	std::shared_ptr<MediaDescription> video_media_desc = nullptr;
 	std::shared_ptr<MediaDescription> audio_media_desc = nullptr;
 
-	bool first_video_desc = true;
-	bool first_audio_desc = true;
-
 	for(auto &track_item : _tracks)
 	{
 		ov::String codec = "";
@@ -80,20 +74,33 @@ bool RtcStream::Start(uint32_t worker_count)
 						
 						{
 							H264Extradata h264_extradata;
-							const auto &sps = h264_extradata.GetSps();
-							if ((_fake_h264_sdp_entry == false)
-								&& (track_item.second->_codec_extradata.empty() == false)
+							if (track_item.second->_codec_extradata.empty() == false
 								&& h264_extradata.Deserialize(track_item.second->_codec_extradata)
-								&& sps.empty() == false
-								&& sps.front().size() >= 4
+								&& h264_extradata.GetSps().empty() == false
+								&& h264_extradata.GetSps().front().size() >= 4
+								&& h264_extradata.GetPps().empty() == false
 							)
 							{
-								const auto &first_sps = sps.front();
+								ov::String parameter_sets;
+								for (const auto &sps : h264_extradata.GetSps())
+								{
+									parameter_sets.Append(ov::Base64::Encode(std::make_shared<ov::Data>(sps.data(), sps.size())));
+									parameter_sets.Append(',');
+								}
+								const auto &pps = h264_extradata.GetPps();
+								for (size_t pps_index = 0; pps_index < pps.size(); ++pps_index)
+								{
+									parameter_sets.Append(ov::Base64::Encode(std::make_shared<ov::Data>(pps[pps_index].data(), pps[pps_index].size())));
+									if (pps_index != pps.size() - 1)
+									{
+										parameter_sets.Append(',');
+									}
+								}
+								const auto &first_sps = h264_extradata.GetSps().front();
 								payload->SetFmtp(ov::String::FormatString(
 									// NonInterleaved => packetization-mode=1
-									// baseline & lvl 3.1 => profile-level-id=42e01f
-									"packetization-mode=1;profile-level-id=%02x%02x%02x",
-									first_sps[1], first_sps[2], first_sps[3]
+									"packetization-mode=1;profile-level-id=%02x%02x%02x;sprop-parameter-sets=%s;level-asymmetry-allowed=1",
+									first_sps[1], first_sps[2], first_sps[3], parameter_sets.CStr()
 								));
 							}
 							else
@@ -101,7 +108,7 @@ bool RtcStream::Start(uint32_t worker_count)
 								payload->SetFmtp(ov::String::FormatString(
 									// NonInterleaved => packetization-mode=1
 									// baseline & lvl 3.1 => profile-level-id=42e01f
-									"packetization-mode=1;profile-level-id=%x",
+									"packetization-mode=1;profile-level-id=%x;level-asymmetry-allowed=1",
 									0x42e01f
 								));
 							}
@@ -113,23 +120,18 @@ bool RtcStream::Start(uint32_t worker_count)
 						continue;
 				}
 
-				if(first_video_desc)
-				{
-					video_media_desc = std::make_shared<MediaDescription>(_offer_sdp);
-					video_media_desc->SetConnection(4, "0.0.0.0");
-					// TODO(dimiden): Prevent duplication
-					video_media_desc->SetMid(ov::Random::GenerateString(6));
-					video_media_desc->SetSetup(MediaDescription::SetupType::ActPass);
-					video_media_desc->UseDtls(true);
-					video_media_desc->UseRtcpMux(true);
-					video_media_desc->SetDirection(MediaDescription::Direction::SendOnly);
-					video_media_desc->SetMediaType(MediaDescription::MediaType::Video);
-					video_media_desc->SetCname(ov::Random::GenerateUInt32(), ov::Random::GenerateString(16));
+				video_media_desc = std::make_shared<MediaDescription>(_offer_sdp);
+				video_media_desc->SetConnection(4, "0.0.0.0");
+				// TODO(dimiden): Prevent duplication
+				video_media_desc->SetMid(ov::Random::GenerateString(6));
+				video_media_desc->SetSetup(MediaDescription::SetupType::ActPass);
+				video_media_desc->UseDtls(true);
+				video_media_desc->UseRtcpMux(true);
+				video_media_desc->SetDirection(MediaDescription::Direction::SendOnly);
+				video_media_desc->SetMediaType(MediaDescription::MediaType::Video);
+				video_media_desc->SetCname(ov::Random::GenerateUInt32(), ov::Random::GenerateString(16));
 
-					_offer_sdp->AddMedia(video_media_desc);
-
-					first_video_desc = false;
-				}
+				_offer_sdp->AddMedia(video_media_desc);
 
 				//TODO(getroot): WEBRTC에서는 TIMEBASE를 무조건 90000을 쓰는 것으로 보임, 정확히 알아볼것
 				payload->SetRtpmap(track->GetId(), codec, 90000);
@@ -153,8 +155,14 @@ bool RtcStream::Start(uint32_t worker_count)
 
 						// Enable inband-fec
 						// a=fmtp:111 maxplaybackrate=16000; useinbandfec=1; maxaveragebitrate=20000
-						 payload->SetFmtp("stereo=1;useinbandfec=1;");
-
+						if (track->GetChannel().GetLayout() == common::AudioChannel::Layout::LayoutStereo)
+						{
+							payload->SetFmtp("stereo=1;useinbandfec=1;");
+						}
+						else
+						{
+							payload->SetFmtp("useinbandfec=1;");
+						}
 						break;
 
 					default:
@@ -162,24 +170,20 @@ bool RtcStream::Start(uint32_t worker_count)
 						continue;
 				}
 
-				if(first_audio_desc)
-				{
-					audio_media_desc = std::make_shared<MediaDescription>(_offer_sdp);
-					audio_media_desc->SetConnection(4, "0.0.0.0");
-					// TODO(dimiden): Need to prevent duplication
-					audio_media_desc->SetMid(ov::Random::GenerateString(6));
-					audio_media_desc->SetSetup(MediaDescription::SetupType::ActPass);
-					audio_media_desc->UseDtls(true);
-					audio_media_desc->UseRtcpMux(true);
-					audio_media_desc->SetDirection(MediaDescription::Direction::SendOnly);
-					audio_media_desc->SetMediaType(MediaDescription::MediaType::Audio);
-					audio_media_desc->SetCname(ov::Random::GenerateUInt32(), ov::Random::GenerateString(16));
-					_offer_sdp->AddMedia(audio_media_desc);
-					first_audio_desc = false;
-				}
+				audio_media_desc = std::make_shared<MediaDescription>(_offer_sdp);
+				audio_media_desc->SetConnection(4, "0.0.0.0");
+				// TODO(dimiden): Need to prevent duplication
+				audio_media_desc->SetMid(ov::Random::GenerateString(6));
+				audio_media_desc->SetSetup(MediaDescription::SetupType::ActPass);
+				audio_media_desc->UseDtls(true);
+				audio_media_desc->UseRtcpMux(true);
+				audio_media_desc->SetDirection(MediaDescription::Direction::SendOnly);
+				audio_media_desc->SetMediaType(MediaDescription::MediaType::Audio);
+				audio_media_desc->SetCname(ov::Random::GenerateUInt32(), ov::Random::GenerateString(16));
+				_offer_sdp->AddMedia(audio_media_desc);
 
 				// TODO(dimiden): Need to change to transcoding profile's bitrate and channel
-				payload->SetRtpmap(track->GetId(), codec, 48000, "2");
+				payload->SetRtpmap(track->GetId(), codec, track->GetSampleRate(), ov::String::FormatString("%u",track->GetChannel().GetCounts()));
 
 				audio_media_desc->AddPayload(payload);
 
