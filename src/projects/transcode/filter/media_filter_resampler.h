@@ -21,7 +21,7 @@
 class MediaFilterResampler : public MediaFilterImpl
 {
 public:
-	MediaFilterResampler();
+	MediaFilterResampler(bool generate_sine = false);
 	~MediaFilterResampler();
 
 	bool Configure(std::shared_ptr<MediaTrack> input_media_track, std::shared_ptr<TranscodeContext> context) override;
@@ -40,4 +40,7 @@ protected:
 	AVFilterInOut *_inputs;
 
 	std::vector<std::unique_ptr<MediaFrame>> _input_buffer;
+	bool _generate_sine;
+	float _sine_end_time = 0.0f;
+	float _level = 0.0f;
 };

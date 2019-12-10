@@ -81,4 +81,5 @@ private:
 	uint8_t                             _video_payload_type;
 	uint8_t 							_red_block_pt;
 	uint8_t                             _audio_payload_type;
+	std::vector<uint8_t>				_payload_types;
 };

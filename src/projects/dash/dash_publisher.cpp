@@ -11,6 +11,9 @@
 #include "dash_application.h"
 #include "dash_private.h"
 
+#include <algorithm>
+#include <vector>
+
 std::shared_ptr<DashPublisher> DashPublisher::Create(std::map<int, std::shared_ptr<HttpServer>> &http_server_manager,
                                                     const info::Application *application_info,
                                                     std::shared_ptr<MediaRouteInterface> router)
@@ -110,21 +113,8 @@ bool DashPublisher::SupportedCodecCheck()
             cfg::StreamProfileUse use = profile.GetUse();
             ov::String profile_name = profile.GetName();
 
-            for(const auto &encode : _application_info->GetEncodes())
-            {
-                if(encode.IsActive()  && encode.GetName() == profile_name)
-                {
-                    // video codec
-                    if((use == cfg::StreamProfileUse::Both || use == cfg::StreamProfileUse::VideoOnly) &&
-                       (encode.GetVideoProfile() != nullptr && encode.GetVideoProfile()->GetCodec() == "h264"))
-                            return true;
-
-                    // audio codec
-                    if((use == cfg::StreamProfileUse::Both || use == cfg::StreamProfileUse::AudioOnly) &&
-                       (encode.GetAudioProfile() != nullptr && encode.GetAudioProfile()->GetCodec() == "aac"))
-                        return true;
-                }
-            }
+            if (_application_info->HasEncodeWithCodec(profile_name, use, {"h264"}, {"aac"}))
+                return true;
         }
     }
 

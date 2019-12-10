@@ -120,13 +120,11 @@ TranscodeStream::TranscodeStream(const info::Application *application_info, std:
 			continue;
 		}
 
-		auto video_profile = encode.GetVideoProfile();
-		auto audio_profile = encode.GetAudioProfile();
-		auto profile_name = encode.GetName();
-
-		if((video_profile != nullptr) && (video_profile->IsActive()))
+		for(const auto &video_profile : encode.GetVideoProfiles())
 		{
-			auto width = video_profile->GetWidth(), height = video_profile->GetHeight();
+			if(video_profile.IsActive())
+			{
+				auto width = video_profile.GetWidth(), height = video_profile.GetHeight();
 			if (width == -1 || height == -1)
 			{
 				const auto& input_tracks = _stream_info_input->GetTracks();
@@ -152,10 +150,10 @@ TranscodeStream::TranscodeStream(const info::Application *application_info, std:
 				}
 			}
 			auto context = std::make_shared<TranscodeContext>(
-				GetCodecId(video_profile->GetCodec()),
-				GetBitrate(video_profile->GetBitrate()),
+					GetCodecId(video_profile.GetCodec()),
+					GetBitrate(video_profile.GetBitrate()),
 				width, height,
-				video_profile->GetFramerate()
+					video_profile.GetFramerate()
 			);
 			uint8_t track_id = AddContext(common::MediaType::Video, context);
 			if(track_id)
@@ -163,13 +161,16 @@ TranscodeStream::TranscodeStream(const info::Application *application_info, std:
 				tracks.push_back(track_id);
 			}
 		}
+		}
 
-		if((audio_profile != nullptr) && (audio_profile->IsActive()))
+		for(const auto &audio_profile : encode.GetAudioProfiles())
+		{
+			if(audio_profile.IsActive())
 		{
 			auto context = std::make_shared<TranscodeContext>(
-				GetCodecId(audio_profile->GetCodec()),
-				GetBitrate(audio_profile->GetBitrate()),
-				audio_profile->GetSamplerate()
+					GetCodecId(audio_profile.GetCodec()),
+					GetBitrate(audio_profile.GetBitrate()),
+					audio_profile.GetSamplerate()
 			);
 			uint8_t track_id = AddContext(common::MediaType::Audio, context);
 			if(track_id)
@@ -177,6 +178,9 @@ TranscodeStream::TranscodeStream(const info::Application *application_info, std:
 				tracks.push_back(track_id);
 			}
 		}
+		}
+
+		auto profile_name = encode.GetName();
 
 		if(!tracks.empty())
 		{
@@ -213,8 +217,9 @@ TranscodeStream::TranscodeStream(const info::Application *application_info, std:
 				logtw("Encoder for [%s] does not exist in Server.xml", profile.GetName().CStr());
 				continue;
 			}
-			tracks.push_back(item->second[0]);  // Video
-			tracks.push_back(item->second[1]);  // Audio
+			//tracks.push_back(item->second[0]);  // Video
+			//tracks.push_back(item->second[1]);  // Audio
+			tracks = item->second;
 		}
 		_stream_tracks[stream_name] = tracks;
 		tracks.clear();

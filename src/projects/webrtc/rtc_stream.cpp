@@ -136,7 +136,7 @@ bool RtcStream::Start(uint32_t worker_count)
 						continue;
 				}
 
-				if(first_audio_desc)
+				//if(first_audio_desc)
 				{
 					audio_media_desc = std::make_shared<MediaDescription>(_offer_sdp);
 					audio_media_desc->SetConnection(4, "0.0.0.0");

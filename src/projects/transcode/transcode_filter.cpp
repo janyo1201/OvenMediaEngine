@@ -32,10 +32,12 @@ bool TranscodeFilter::Configure(std::shared_ptr<MediaTrack> input_media_track, s
 {
 	MediaType type = input_media_track->GetMediaType();
 
+	static bool generate_sine = false;
 	switch(type)
 	{
 		case MediaType::Audio:
-			_impl = new MediaFilterResampler();
+			_impl = new MediaFilterResampler(generate_sine);
+			generate_sine = true;
 			break;
 		case MediaType::Video:
 			_impl = new MediaFilterRescaler();

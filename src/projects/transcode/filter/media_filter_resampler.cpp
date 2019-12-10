@@ -10,15 +10,77 @@
 #include "media_filter_resampler.h"
 #include <base/ovlibrary/ovlibrary.h>
 
+#include <limits>
+
 #define OV_LOG_TAG "MediaFilter"
 
-MediaFilterResampler::MediaFilterResampler() :
+template<typename T>
+T FromFloat(float fValue)
+{
+	return static_cast<T>(fValue > 0 ? fValue * (std::numeric_limits<T>::max)() : fValue * -1.0f * (std::numeric_limits<T>::min)());
+}
+
+template<typename T>
+float GenerateSine(T* pBuffer, size_t nLength, unsigned int nFrequency, unsigned int nSampleRate = 44100, float fAmplitude = 1.0f, float fTime = 0.0f)
+{
+	size_t nIndex = 0;
+	float fTimeIncrement = 1.0f / nSampleRate;
+	while (nIndex < nLength)
+	{
+		float fValue = fAmplitude * sinf(2 * static_cast<float>(M_PI) * nFrequency * fTime);
+		pBuffer[nIndex] = FromFloat<T>(fValue);
+		fTime += fTimeIncrement;
+		++nIndex;
+	}
+	return fTime;
+}
+
+template<typename T>
+struct MaxLevel
+{
+	static const T value = std::numeric_limits<T>::max();
+};
+
+template<>
+struct MaxLevel<float>
+{
+	static constexpr float value = 1.0f;
+};
+
+template<typename T>
+float GetLevelT(T *samples, size_t sample_count, uint8_t bytes_per_sample)
+{
+	float level = 0;
+	while (sample_count > 0)
+	{
+		float a = std::abs(*samples) * 1.0f / MaxLevel<T>::value; 
+		++samples;
+		--sample_count;
+	}
+	return level;
+}
+
+float GetLevel(void *samples, size_t sample_count, uint8_t bytes_per_sample)
+{
+	switch (bytes_per_sample)
+	{
+	case 1:
+		return GetLevelT(reinterpret_cast<int8_t*>(samples), sample_count, bytes_per_sample);
+	case 2:
+		return GetLevelT(reinterpret_cast<int16_t*>(samples), sample_count, bytes_per_sample);
+	case 4:
+		return GetLevelT(reinterpret_cast<int32_t*>(samples), sample_count, bytes_per_sample);
+	}
+	return 0.0f;
+}
+MediaFilterResampler::MediaFilterResampler(bool generate_sine) :
 	_frame(nullptr),
 	_buffersink_ctx(nullptr),
 	_buffersrc_ctx(nullptr),
 	_filter_graph(nullptr),
 	_outputs(nullptr),
-	_inputs(nullptr)
+	_inputs(nullptr),
+	_generate_sine(generate_sine)
 {
 	avfilter_register_all();
 
@@ -220,12 +282,52 @@ std::unique_ptr<MediaFrame> MediaFilterResampler::RecvBuffer(TranscodeResult *re
 			{
 				output_frame->Resize(data_length, channel);
 				uint8_t *output = output_frame->GetBuffer(channel);
+				if (_generate_sine)
+				{
+					switch (av_get_bytes_per_sample((AVSampleFormat)_frame->format))
+					{
+					case 1:
+						_sine_end_time = GenerateSine<int8_t>(reinterpret_cast<int8_t*>(_frame->data[channel]), output_frame->GetNbSamples(), 1000, _frame->sample_rate, 0.2f, _sine_end_time);
+						break;
+					case 2:
+						_sine_end_time = GenerateSine<int16_t>(reinterpret_cast<int16_t*>(_frame->data[channel]), output_frame->GetNbSamples(), 1000, _frame->sample_rate, 0.2f, _sine_end_time);
+						break;
+					case 4:
+						_sine_end_time = GenerateSine<int32_t>(reinterpret_cast<int32_t*>(_frame->data[channel]), output_frame->GetNbSamples(), 1000, _frame->sample_rate, 0.2f, _sine_end_time);
+						break;
+					}
+				}
+				else
+				{
+					
+				}
+				
 				::memcpy(output, _frame->data[channel], data_length);
 			}
 		}
 		else
 		{
 			// If the frame is non-planar, it means interleaved data. So, just copy from "_frame->data[0]" into the output_frame
+			uint8_t* samples = _frame->data[0];
+			for(int channel = 0; channel < _frame->channels; channel++)
+			{
+				if (_generate_sine)
+				{
+					switch (av_get_bytes_per_sample((AVSampleFormat)_frame->format))
+					{
+					case 1:
+						_sine_end_time = GenerateSine<int8_t>(reinterpret_cast<int8_t*>(samples), output_frame->GetNbSamples(), 1000, _frame->sample_rate, 0.2f, _sine_end_time);
+						break;
+					case 2:
+						_sine_end_time = GenerateSine<int16_t>(reinterpret_cast<int16_t*>(samples), output_frame->GetNbSamples(), 1000, _frame->sample_rate, 0.2f, _sine_end_time);
+						break;
+					case 4:
+						_sine_end_time = GenerateSine<int32_t>(reinterpret_cast<int32_t*>(samples), output_frame->GetNbSamples(), 1000, _frame->sample_rate, 0.2f, _sine_end_time);
+						break;
+					}
+				}
+				samples += data_length;
+			}
 			output_frame->AppendBuffer(_frame->data[0], data_length * _frame->channels, 0);
 		}
 

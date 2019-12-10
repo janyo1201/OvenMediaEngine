@@ -79,6 +79,7 @@ bool RtcSession::Start()
 		if(peer_media_desc->GetMediaType() == MediaDescription::MediaType::Audio)
 		{
 			_audio_payload_type = first_payload->GetId();
+			_payload_types.emplace_back(_audio_payload_type);
 		}
 		else
 		{
@@ -87,11 +88,13 @@ bool RtcSession::Start()
 			{
 				_video_payload_type = RED_PAYLOAD_TYPE;
 				_red_block_pt = first_payload->GetId();
+				_payload_types.emplace_back(_red_block_pt);
 
 			}
 			else
 			{
 				_video_payload_type = first_payload->GetId();
+				_payload_types.emplace_back(_video_payload_type);
 			}
 		}
 
@@ -200,7 +203,8 @@ bool RtcSession::SendOutgoingData(uint32_t packet_type, std::shared_ptr<ov::Data
 	auto red_block_pt = static_cast<uint8_t>((packet_type & 0xFF00) >> 8);
 	auto origin_pt_of_fec = static_cast<uint8_t>((packet_type & 0xFF0000) >> 16);
 
-	if(rtp_payload_type != _video_payload_type && rtp_payload_type != _audio_payload_type)
+	if (std::find(_payload_types.begin(), _payload_types.end(), rtp_payload_type) == _payload_types.end())
+	//if(rtp_payload_type != _video_payload_type && rtp_payload_type != _audio_payload_type)
 	{
 		return false;
 	}

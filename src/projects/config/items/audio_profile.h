@@ -44,6 +44,11 @@ namespace cfg
 			return _channel;
 		}
 
+		int GetExplicitTrackId() const
+		{
+			return _explicit_track_id;
+		}
+
 	protected:
 		void MakeParseList() const override
 		{
@@ -53,6 +58,7 @@ namespace cfg
 			RegisterValue("Bitrate", &_bitrate);
 			RegisterValue("Samplerate", &_samplerate);
 			RegisterValue("Channel", &_channel);
+			RegisterValue<ValueType::Attribute, Optional>("track", &_explicit_track_id);
 		}
 
 		bool _bypass = false;
@@ -61,5 +67,6 @@ namespace cfg
 		ov::String _bitrate;
 		int _samplerate = 0;
 		int _channel = 0;
+		int _explicit_track_id = -1;
 	};
 }
