@@ -358,6 +358,19 @@ install_base_centos()
     export LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64
 }
 
+install_base_amazon_linux()
+{
+    # Amazon Linux 2 "Development Tools" packages are quite the same as per scl devtoolset-7 - equalent step to CentOS 7 install
+    sudo yum groupinstall -y 'Development Tools'
+    PKGS="bc gcc-c++ nasm autoconf libtool glibc-static zlib-devel git bzip2 tcl cmake"
+    for PKG in ${PKGS}; do
+        sudo yum install -y ${PKG} || fail_exit ${PKG}
+    done
+
+    export PKG_CONFIG_PATH=\${PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig
+    export LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64
+}
+
 install_base_macos()
 {
     BREW_PATH=$(which brew)
@@ -389,6 +402,10 @@ check_version()
     fi
 
     if [[ "x${OSNAME}" == "xFedora" && "x${OSVERSION}" != "x28" ]]; then
+        proceed_yn
+    fi
+
+    if [[ "x${OSNAME}" == "xAmazon Linux" && "x${OSVERSION}" != "x2" ]]; then
         proceed_yn
     fi
 }
@@ -452,6 +469,29 @@ elif  [ "x${OSNAME}" == "xFedora" ]; then
     check_version
 
     install_base_fedora
+
+    install_libsrtp
+
+    install_fdk_aac
+
+    install_ffmpeg
+
+    install_libopenh264
+
+    install_libsrt
+
+    sudo ldconfig
+elif  [ "x${OSNAME}" == "xAmazon Linux" ]; then
+
+    check_version
+
+    install_base_amazon_linux
+
+    install_openssl
+
+    install_libvpx
+
+    install_libopus
 
     install_libsrtp
 
